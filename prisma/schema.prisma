@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// --- 系统配置 (System Configuration) ---
+
+model SystemSettings {
+  id            String   @id @default("default")
+  siteName      String   @default("AnimoSaaS")
+  logoUrl       String?
+  footerText    String   @default("© 2024 AnimoSaaS. All rights reserved.")
+  primaryColor  String   @default("#00ff88")
+  updatedAt     DateTime @updatedAt
+}
+
+model StorageSettings {
+  id            String   @id @default("default")
+  provider      String   @default("LOCAL") // LOCAL, ALIST, S3
+  config        String   @default("{}")    // JSON string for provider-specific config
+  updatedAt     DateTime @updatedAt
+}
+
+model SecuritySettings {
+  id                String   @id @default("default")
+  allowRegistration Boolean  @default(true)
+  requireInvitation Boolean  @default(false)
+  adminEmail        String?
+  updatedAt         DateTime @updatedAt
+}
+
+// --- 业务模块 (Business Modules) ---
+
+model Navigation {
+  id          String   @id @default(cuid())
+  label       String
+  icon        String?  @default("Link")
+  type        NavType  @default(MODULE)
+  value       String   // Module ID, Category ID, or External URL
+  order       Int      @default(0)
+  isEnabled   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum NavType {
+  MODULE    // 内部业务模块 (Assets, Tutorials, etc.)
+  CATEGORY  // 素材分类
+  EXTERNAL  // 外部链接
+}
+
+model Asset {
+  id              String   @id @default(cuid())
+  title           String
+  description     String?
+  thumbnail       String?
+  category        String?
+  tags            String?  // Comma separated
+  downloadUrl     String
+  storageProvider String   @default("LOCAL")
+  downloadCount   Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      String   @default("USER") // USER, ADMIN
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Log {
+  id        String   @id @default(cuid())
+  action    String
+  user      String
+  details   String?
+  createdAt DateTime @default(now())
+}
