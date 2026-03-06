@@ -8,7 +8,9 @@
       "Bash(npm list:*)",
       "Bash(npx husky:*)",
       "Bash(mkdir:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(rm:*)",
+      "Bash(grep:*)"
     ]
   }
 }

@@ -3,6 +3,11 @@ import type { NextRequest } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 
 /**
+ * 强制使用 Node.js Runtime（jsonwebtoken 不支持 Edge Runtime）
+ */
+export const runtime = 'nodejs';
+
+/**
  * Next.js 中间件 - 统一认证和授权
  */
 export async function middleware(request: NextRequest) {
@@ -64,7 +69,8 @@ export async function middleware(request: NextRequest) {
 
   // 下载路由保护（需要登录）
   if (pathname.startsWith('/api/download') || pathname.startsWith('/api/fetch')) {
-    const token = request.cookies.get('auth_token')?.value || request.cookies.get('admin_token')?.value;
+    const token =
+      request.cookies.get('auth_token')?.value || request.cookies.get('admin_token')?.value;
 
     if (!token) {
       return NextResponse.json(
@@ -96,10 +102,5 @@ export async function middleware(request: NextRequest) {
  * 中间件配置 - 指定需要拦截的路由
  */
 export const config = {
-  matcher: [
-    '/api/admin/:path*',
-    '/api/user/:path*',
-    '/api/download/:path*',
-    '/api/fetch/:path*',
-  ],
+  matcher: ['/api/admin/:path*', '/api/user/:path*', '/api/download/:path*', '/api/fetch/:path*'],
 };

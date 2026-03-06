@@ -4,14 +4,14 @@ import { prisma } from '@/lib/prisma';
 import { db } from '@/lib/db';
 import { errorResponse, successResponse } from '@/lib/api-response';
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getSession('admin');
     if (!session || (session as any).role !== 'admin') {
       return errorResponse('未授权访问', 401);
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // 恢复资产
     const asset = await prisma.asset.update({
