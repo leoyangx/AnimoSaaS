@@ -59,7 +59,9 @@ export default function AdminLoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <label className="text-xs font-mono uppercase tracking-widest text-zinc-500 ml-1">管理员邮箱</label>
+            <label className="text-xs font-mono uppercase tracking-widest text-zinc-500 ml-1">
+              管理员邮箱
+            </label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
               <input
@@ -74,7 +76,9 @@ export default function AdminLoginPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-mono uppercase tracking-widest text-zinc-500 ml-1">管理密码</label>
+            <label className="text-xs font-mono uppercase tracking-widest text-zinc-500 ml-1">
+              管理密码
+            </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
               <input
@@ -105,7 +109,7 @@ export default function AdminLoginPage() {
         </form>
 
         <div className="mt-8 pt-8 border-t border-white/5 text-center">
-          <button 
+          <button
             onClick={() => router.push('/')}
             className="text-zinc-500 text-sm hover:text-zinc-300 transition-colors"
           >

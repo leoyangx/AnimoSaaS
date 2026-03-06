@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   const { type } = data;
 
   // Simulate API call to storage provider
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  await new Promise((resolve) => setTimeout(resolve, 1000));
 
   if (type === 'alist') {
     if (!data.alistUrl || !data.alistToken) {

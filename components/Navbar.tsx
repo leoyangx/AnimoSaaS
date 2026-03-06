@@ -43,26 +43,26 @@ export function Navbar({ user, settings }: { user: any, settings: any }) {
   }, []);
 
   const resolveHref = (item: any) => {
-    if (item.type === 'MODULE') {
-      return ModuleRoutes[item.value] || '/';
+    if (item.targetType === 'INTERNAL') {
+      return ModuleRoutes[item.targetValue] || '/';
     }
-    if (item.type === 'CATEGORY') {
-      return `/?category=${item.value}`;
+    if (item.targetType === 'CATEGORY') {
+      return `/?category=${item.targetValue}`;
     }
-    return item.value; // EXTERNAL
+    return item.targetValue || '#'; // EXTERNAL
   };
 
   const isLinkActive = (item: any) => {
     const href = resolveHref(item);
-    if (item.type === 'MODULE') {
-      if (item.value === 'HOME') return pathname === '/' && !currentCategory;
-      if (item.value === 'ASSETS') return currentCategory === '素材库';
-      if (item.value === 'TUTORIALS') return currentCategory === '动画教学';
-      if (item.value === 'SOFTWARE') return currentCategory === '常用软件';
-      if (item.value === 'ABOUT') return pathname === '/about';
+    if (item.targetType === 'INTERNAL') {
+      if (item.targetValue === 'HOME') return pathname === '/' && !currentCategory;
+      if (item.targetValue === 'ASSETS') return currentCategory === '素材库';
+      if (item.targetValue === 'TUTORIALS') return currentCategory === '动画教学';
+      if (item.targetValue === 'SOFTWARE') return currentCategory === '常用软件';
+      if (item.targetValue === 'ABOUT') return pathname === '/about';
     }
-    if (item.type === 'CATEGORY') {
-      return currentCategory === item.value;
+    if (item.targetType === 'CATEGORY') {
+      return currentCategory === item.targetValue;
     }
     return false;
   };
@@ -139,7 +139,7 @@ export function Navbar({ user, settings }: { user: any, settings: any }) {
                 </div>
                 <span className="text-sm font-black text-zinc-400 uppercase tracking-widest">{user.email.split('@')[0]}</span>
               </div>
-              <button 
+              <button
                 onClick={() => {
                   document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
                   window.location.href = '/login';
@@ -150,8 +150,8 @@ export function Navbar({ user, settings }: { user: any, settings: any }) {
               </button>
             </div>
           ) : (
-            <Link 
-              href="/login" 
+            <Link
+              href="/login"
               className="group flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
             >
               登录账号

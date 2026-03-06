@@ -24,7 +24,10 @@ export default async function AdminUsersPage() {
               <p className="text-zinc-500 text-sm">管理所有注册学员的权限与状态。</p>
             </div>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
+                size={18}
+              />
               <input type="text" placeholder="搜索学员..." className="glass-input pl-12 w-64" />
             </div>
           </header>

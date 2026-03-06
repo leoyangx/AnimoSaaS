@@ -1,7 +1,7 @@
-import { getSettings } from '@/lib/settings-service';
+import { db } from '@/lib/db';
 import { NavigationManagement } from './NavigationManagement';
 
 export default async function NavigationPage() {
-  const settings = await getSettings();
-  return <NavigationManagement initialItems={settings.navigation} />;
+  const items = await db.navigation.getAll();
+  return <NavigationManagement initialItems={JSON.parse(JSON.stringify(items))} />;
 }

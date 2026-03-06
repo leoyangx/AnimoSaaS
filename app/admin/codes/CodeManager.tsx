@@ -57,14 +57,14 @@ export function CodeManager({ initialCodes }: { initialCodes: any[] }) {
           <p className="text-zinc-500 text-sm">生成并分发邀请码，控制学员入驻。</p>
         </div>
         <div className="flex gap-3">
-          <button 
+          <button
             onClick={exportCodes}
             className="bg-white/5 border border-white/10 px-4 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-white/10 transition-colors"
           >
             <Download size={16} />
             导出 TXT
           </button>
-          <button 
+          <button
             disabled={loading}
             onClick={generateCodes}
             className="cyber-button text-sm flex items-center gap-2"
@@ -98,16 +98,29 @@ export function CodeManager({ initialCodes }: { initialCodes: any[] }) {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-white/10 bg-white/5">
-              <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">邀请码</th>
-              <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">状态</th>
-              <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">使用者 ID</th>
-              <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">创建时间</th>
-              <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">操作</th>
+              <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">
+                邀请码
+              </th>
+              <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">
+                状态
+              </th>
+              <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">
+                使用者 ID
+              </th>
+              <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">
+                创建时间
+              </th>
+              <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">
+                操作
+              </th>
             </tr>
           </thead>
           <tbody>
             {codes.map((code: any) => (
-              <tr key={code.code} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+              <tr
+                key={code.code}
+                className="border-b border-white/5 hover:bg-white/5 transition-colors"
+              >
                 <td className="px-6 py-4">
                   <span className="font-mono font-bold text-brand-secondary">{code.code}</span>
                 </td>
@@ -122,12 +135,10 @@ export function CodeManager({ initialCodes }: { initialCodes: any[] }) {
                     </span>
                   )}
                 </td>
-                <td className="px-6 py-4 text-sm text-zinc-500 font-mono">
-                  {code.usedBy || '-'}
-                </td>
+                <td className="px-6 py-4 text-sm text-zinc-500 font-mono">{code.usedBy || '-'}</td>
                 <td className="px-6 py-4 text-sm text-zinc-400">{formatDate(code.createdAt)}</td>
                 <td className="px-6 py-4">
-                  <button 
+                  <button
                     onClick={() => deleteCode(code.code)}
                     className="text-zinc-500 hover:text-red-500 transition-colors"
                   >

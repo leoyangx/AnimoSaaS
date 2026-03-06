@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, Space_Grotesk, JetBrains_Mono } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { db } from '@/lib/db';
 import './globals.css';
 
 const inter = Inter({
@@ -19,21 +20,26 @@ const jetbrainsMono = JetBrains_Mono({
   variable: '--font-mono',
 });
 
-export const metadata: Metadata = {
-  title: 'AnimoSaaS - 专业动画素材管理系统',
-  description: '专为动画工作室打造的私域素材分发门户',
-};
-
-import { getSettings } from '@/lib/settings-service';
+export async function generateMetadata(): Promise<Metadata> {
+  const config = await db.config.get();
+  return {
+    title: {
+      template: `%s | ${config.title || 'AnimoSaaS'}`,
+      default: config.title || 'AnimoSaaS - 私域动画素材管理系统',
+    },
+    description: config.slogan || '专业的高质量动画素材分发系统。',
+  };
+}
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const settings = await getSettings();
-  const primaryColor = settings.system.primaryColor || '#00ff88';
+  const config = await db.config.get();
+  const primaryColor = config.themeColor || '#00ff88';
 
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <head>
-        <style dangerouslySetInnerHTML={{ __html: `
+        <style dangerouslySetInnerHTML={{
+          __html: `
           :root {
             --brand-primary: ${primaryColor};
           }

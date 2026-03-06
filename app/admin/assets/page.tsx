@@ -15,8 +15,8 @@ export default async function AdminAssetsPage() {
     <div className="min-h-screen bg-bg-dark flex">
       <AdminSidebar />
       <main className="flex-1 p-8 overflow-y-auto">
-        <AssetManager 
-          initialAssets={JSON.parse(JSON.stringify(assets))} 
+        <AssetManager
+          initialAssets={JSON.parse(JSON.stringify(assets))}
           categories={JSON.parse(JSON.stringify(categories))}
         />
       </main>

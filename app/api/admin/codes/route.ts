@@ -12,10 +12,14 @@ export async function POST(req: Request) {
   try {
     const { count } = await req.json();
     await db.codes.generate(count || 10);
-    
+
     // Log action
-    await db.logs.create('GENERATE_CODES', (session as any).email, `批量生成邀请码: ${count || 10} 个`);
-    
+    await db.logs.create(
+      'GENERATE_CODES',
+      (session as any).email,
+      `批量生成邀请码: ${count || 10} 个`
+    );
+
     return NextResponse.json({ success: true, codes: await db.codes.getAll() });
   } catch (e) {
     return NextResponse.json({ error: 'Failed to generate codes' }, { status: 500 });
@@ -30,7 +34,7 @@ export async function GET(req: Request) {
 
   const codes = await db.codes.getAll();
   const text = codes.map((c: InvitationCode) => `${c.code}\t${c.status}`).join('\n');
-  
+
   return new NextResponse(text, {
     headers: {
       'Content-Type': 'text/plain',

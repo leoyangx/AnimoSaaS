@@ -10,9 +10,9 @@ export async function POST(req: Request) {
 
   const data = await req.json();
   await db.config.update(data);
-  
+
   // Log action
   await db.logs.create('UPDATE_SETTINGS', (session as any).email, `更新系统配置`);
-  
+
   return NextResponse.json({ success: true, config: await db.config.get() });
 }

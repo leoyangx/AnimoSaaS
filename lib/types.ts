@@ -1,3 +1,49 @@
+// ==================== 分页类型 ====================
+
+export interface PaginationParams {
+  page: number;
+  limit: number;
+}
+
+export interface PaginatedData<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
+// ==================== Session 类型 ====================
+
+export interface SessionPayload {
+  id: string;
+  email: string;
+  role: 'USER' | 'ADMIN' | 'student';
+}
+
+// ==================== API 响应类型 ====================
+
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+  timestamp: string;
+}
+
+export interface ApiError {
+  success: false;
+  error: string;
+  timestamp: string;
+  details?: any;
+}
+
+// ==================== 资产类型 ====================
+
 export interface Asset {
   id: string;
   title: string;
@@ -10,8 +56,10 @@ export interface Asset {
   downloadUrl: string;
   storageProvider: string;
   isDirectDownload?: boolean;
-  createdAt: string | Date;
   downloadCount: number;
+  deletedAt?: string | Date | null;
+  createdAt: string | Date;
+  updatedAt?: string | Date;
 }
 
 export interface AssetCategory {
@@ -23,7 +71,12 @@ export interface AssetCategory {
   order: number;
   status: string;
   icon?: string | null;
+  deletedAt?: string | Date | null;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
 }
+
+// ==================== 导航类型 ====================
 
 export interface TopNav {
   id: string;
@@ -35,24 +88,52 @@ export interface TopNav {
   icon?: string | null;
 }
 
+// ==================== 用户类型 ====================
+
 export interface User {
   id: string;
   email: string;
   password?: string;
   role: string;
-  createdAt: string | Date;
-  lastLogin?: string | Date | null;
   disabled: boolean;
+  lastLogin?: string | Date | null;
   ip?: string | null;
   city?: string | null;
+  deletedAt?: string | Date | null;
+  createdAt: string | Date;
+  updatedAt?: string | Date;
 }
 
+// ==================== 邀请码类型 ====================
+
 export interface InvitationCode {
+  id?: string;
   code: string;
   status: string;
   usedBy?: string | null;
   createdAt: string | Date;
 }
+
+// ==================== 下载日志类型 ====================
+
+export interface DownloadLog {
+  id: string;
+  assetId: string;
+  userId?: string | null;
+  createdAt: string | Date;
+}
+
+// ==================== 管理日志类型 ====================
+
+export interface AdminLog {
+  id: string;
+  action: string;
+  adminEmail: string;
+  details?: string | null;
+  createdAt: string | Date;
+}
+
+// ==================== 站点配置类型 ====================
 
 export interface SiteConfig {
   id?: number;
@@ -62,7 +143,7 @@ export interface SiteConfig {
   footer: string;
   themeColor: string;
   watermark: string;
-  
+
   // Registration & Login
   emailVerificationEnabled: boolean;
   smtpHost?: string | null;
@@ -75,15 +156,52 @@ export interface SiteConfig {
   alistUrl?: string | null;
   alistToken?: string | null;
   alistRoot?: string | null;
-  
+
   // Storage - 123Pan
   pan123Token?: string | null;
   pan123Root?: string | null;
-  
+
   // Storage - Juhe
   juheUrl?: string | null;
   juheToken?: string | null;
 
   primaryColor?: string | null;
   secondaryColor?: string | null;
+
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
 }
+
+// ==================== 文件上传类型 ====================
+
+export interface FileUpload {
+  filename: string;
+  mimetype: string;
+  size: number;
+  buffer: Buffer;
+}
+
+export interface FileMetadata {
+  filename: string;
+  originalName: string;
+  mimetype: string;
+  size: number;
+  hash: string;
+  url: string;
+  thumbnailUrl?: string;
+  width?: number;
+  height?: number;
+}
+
+// ==================== 统计数据类型 ====================
+
+export interface DashboardStats {
+  totalUsers: number;
+  totalAssets: number;
+  totalDownloads: number;
+  unusedCodes: number;
+  recentUsers: User[];
+  recentLogs: AdminLog[];
+  downloadTrend: Array<{ date: string; count: number }>;
+}
+

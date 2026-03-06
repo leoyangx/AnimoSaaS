@@ -25,7 +25,9 @@ export default async function AdminLogsPage() {
                 <Activity className="text-brand-primary" />
                 操作日志
               </h1>
-              <p className="text-zinc-500 text-sm">记录所有管理员的关键操作，确保系统安全可追溯。</p>
+              <p className="text-zinc-500 text-sm">
+                记录所有管理员的关键操作，确保系统安全可追溯。
+              </p>
             </div>
           </header>
 
@@ -34,10 +36,18 @@ export default async function AdminLogsPage() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-white/10 bg-white/5">
-                    <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">时间</th>
-                    <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">管理员</th>
-                    <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">操作类型</th>
-                    <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">操作详情</th>
+                    <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">
+                      时间
+                    </th>
+                    <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">
+                      管理员
+                    </th>
+                    <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">
+                      操作类型
+                    </th>
+                    <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">
+                      操作详情
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.05]">
@@ -56,21 +66,25 @@ export default async function AdminLogsPage() {
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             <Shield size={14} className="text-brand-secondary" />
-                            <span className="text-sm font-medium text-white/90">{log.adminEmail}</span>
+                            <span className="text-sm font-medium text-white/90">
+                              {log.adminEmail}
+                            </span>
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`text-[10px] px-2 py-0.5 rounded border font-bold uppercase tracking-wider ${
-                            log.action.includes('DELETE') ? "bg-red-500/10 text-red-400 border-red-500/20" :
-                            log.action.includes('CREATE') ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
-                            "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                          }`}>
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded border font-bold uppercase tracking-wider ${
+                              log.action.includes('DELETE')
+                                ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                                : log.action.includes('CREATE')
+                                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                  : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                            }`}
+                          >
                             {log.action}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-zinc-400">
-                          {log.details}
-                        </td>
+                        <td className="px-6 py-4 text-sm text-zinc-400">{log.details}</td>
                       </tr>
                     ))
                   )}

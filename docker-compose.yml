@@ -18,7 +18,7 @@ services:
 
     ports:
 
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
 
     volumes:
 
@@ -56,7 +56,7 @@ services:
 
       DATABASE_URL: postgresql://${POSTGRES_USER:-animosaas}:${POSTGRES_PASSWORD:-animosaas_pass}@db:5432/${POSTGRES_DB:-animosaas_db}
 
-      JWT_SECRET: ${JWT_SECRET:-your_super_secret_jwt_key_change_this}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required. Set it in .env file}
 
       DISABLE_SECURE_COOKIE: "true" # Set to "false" if you use HTTPS/SSL
 

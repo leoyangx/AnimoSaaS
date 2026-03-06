@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
-// In a real app, we'd use Prisma here. 
-// For this environment, we'll simulate the DB access to ensure it works without complex setup.
-import { getSettings } from '@/lib/settings-service';
+import { db } from '@/lib/db';
 
 export async function GET() {
-  try {
-    const settings = await getSettings();
-    return NextResponse.json(settings);
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
-  }
+  const config = await db.config.get();
+  return NextResponse.json({
+    siteName: config.title || 'AnimoSaaS',
+    slogan: config.slogan || 'Private Domain Material Distribution System',
+    logo: config.logo || '',
+    watermark: config.watermark || 'ANIMO'
+  });
 }

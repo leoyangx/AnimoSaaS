@@ -6,7 +6,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
-export default function NavigationManager({ initialItems, categories }: { initialItems: any[], categories: any[] }) {
+export default function NavigationManager({
+  initialItems,
+  categories,
+}: {
+  initialItems: any[];
+  categories: any[];
+}) {
   const [items, setItems] = useState(initialItems);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -18,7 +24,7 @@ export default function NavigationManager({ initialItems, categories }: { initia
     targetType: 'INTERNAL',
     targetValue: 'HOME',
     order: 0,
-    status: 'active'
+    status: 'active',
   });
 
   const INTERNAL_MODULES = [
@@ -37,7 +43,7 @@ export default function NavigationManager({ initialItems, categories }: { initia
         targetType: item.targetType || 'INTERNAL',
         targetValue: item.targetValue || 'HOME',
         order: item.order,
-        status: item.status
+        status: item.status,
       });
     } else {
       setEditingItem(null);
@@ -46,7 +52,7 @@ export default function NavigationManager({ initialItems, categories }: { initia
         targetType: 'INTERNAL',
         targetValue: 'HOME',
         order: items.length,
-        status: 'active'
+        status: 'active',
       });
     }
     setIsModalOpen(true);
@@ -68,13 +74,13 @@ export default function NavigationManager({ initialItems, categories }: { initia
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
       });
 
       if (res.ok) {
         router.refresh();
         closeModal();
-        window.location.reload(); 
+        window.location.reload();
       }
     } catch (error) {
       console.error('Failed to save nav item:', error);
@@ -89,7 +95,7 @@ export default function NavigationManager({ initialItems, categories }: { initia
     try {
       const res = await fetch(`/api/admin/navigation/${id}`, { method: 'DELETE' });
       if (res.ok) {
-        setItems(items.filter(i => i.id !== id));
+        setItems(items.filter((i) => i.id !== id));
         router.refresh();
       }
     } catch (error) {
@@ -99,10 +105,10 @@ export default function NavigationManager({ initialItems, categories }: { initia
 
   const getTargetLabel = (item: any) => {
     if (item.targetType === 'INTERNAL') {
-      return INTERNAL_MODULES.find(m => m.id === item.targetValue)?.name || item.targetValue;
+      return INTERNAL_MODULES.find((m) => m.id === item.targetValue)?.name || item.targetValue;
     }
     if (item.targetType === 'CATEGORY') {
-      return categories.find(c => c.id === item.targetValue)?.name || '未知分类';
+      return categories.find((c) => c.id === item.targetValue)?.name || '未知分类';
     }
     return item.targetValue;
   };
@@ -114,7 +120,7 @@ export default function NavigationManager({ initialItems, categories }: { initia
           <h1 className="text-2xl font-display font-bold">顶部导航设置</h1>
           <p className="text-zinc-500 text-sm">通过业务模块映射配置导航，无需手动输入 URL。</p>
         </div>
-        <button 
+        <button
           onClick={() => openModal()}
           className="cyber-button text-sm flex items-center gap-2"
         >
@@ -127,11 +133,21 @@ export default function NavigationManager({ initialItems, categories }: { initia
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-white/10 bg-white/5">
-              <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">导航名称</th>
-              <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">目标类型</th>
-              <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">目标内容</th>
-              <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">排序</th>
-              <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500 text-right">操作</th>
+              <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">
+                导航名称
+              </th>
+              <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">
+                目标类型
+              </th>
+              <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">
+                目标内容
+              </th>
+              <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">
+                排序
+              </th>
+              <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500 text-right">
+                操作
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -143,7 +159,10 @@ export default function NavigationManager({ initialItems, categories }: { initia
               </tr>
             ) : (
               items.map((item) => (
-                <tr key={item.id} className="border-b border-white/5 hover:bg-white/5 transition-colors group">
+                <tr
+                  key={item.id}
+                  className="border-b border-white/5 hover:bg-white/5 transition-colors group"
+                >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <Globe size={16} className="text-brand-primary" />
@@ -152,7 +171,11 @@ export default function NavigationManager({ initialItems, categories }: { initia
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-[10px] font-bold uppercase tracking-wider bg-white/5 text-zinc-400 px-2 py-0.5 rounded border border-white/10">
-                      {item.targetType === 'INTERNAL' ? '内部模块' : item.targetType === 'CATEGORY' ? '素材分类' : '外部链接'}
+                      {item.targetType === 'INTERNAL'
+                        ? '内部模块'
+                        : item.targetType === 'CATEGORY'
+                          ? '素材分类'
+                          : '外部链接'}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-zinc-500 font-mono truncate max-w-[200px]">
@@ -161,13 +184,13 @@ export default function NavigationManager({ initialItems, categories }: { initia
                   <td className="px-6 py-4 text-sm text-zinc-400 font-mono">{item.order}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
+                      <button
                         onClick={() => openModal(item)}
                         className="p-2 rounded-lg bg-white/5 text-zinc-500 hover:text-brand-primary transition-colors"
                       >
                         <Edit3 size={16} />
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleDelete(item.id)}
                         className="p-2 rounded-lg bg-white/5 text-zinc-500 hover:text-red-500 transition-colors"
                       >
@@ -209,22 +232,37 @@ export default function NavigationManager({ initialItems, categories }: { initia
 
               <form onSubmit={handleSubmit} className="p-6 space-y-6">
                 <div className="space-y-2">
-                  <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">导航名称</label>
-                  <input 
+                  <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+                    导航名称
+                  </label>
+                  <input
                     required
-                    type="text" 
+                    type="text"
                     value={formData.name}
-                    onChange={e => setFormData({...formData, name: e.target.value})}
-                    className="w-full glass-input" 
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full glass-input"
                     placeholder="例如：官方网站"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">目标类型</label>
-                  <select 
+                  <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+                    目标类型
+                  </label>
+                  <select
                     value={formData.targetType}
-                    onChange={e => setFormData({...formData, targetType: e.target.value as any, targetValue: e.target.value === 'INTERNAL' ? 'HOME' : e.target.value === 'CATEGORY' ? (categories[0]?.id || '') : ''})}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        targetType: e.target.value as any,
+                        targetValue:
+                          e.target.value === 'INTERNAL'
+                            ? 'HOME'
+                            : e.target.value === 'CATEGORY'
+                              ? categories[0]?.id || ''
+                              : '',
+                      })
+                    }
                     className="w-full glass-input bg-zinc-900"
                   >
                     <option value="INTERNAL">内部业务模块</option>
@@ -234,36 +272,42 @@ export default function NavigationManager({ initialItems, categories }: { initia
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">目标内容</label>
+                  <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+                    目标内容
+                  </label>
                   {formData.targetType === 'INTERNAL' && (
-                    <select 
+                    <select
                       value={formData.targetValue}
-                      onChange={e => setFormData({...formData, targetValue: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, targetValue: e.target.value })}
                       className="w-full glass-input bg-zinc-900"
                     >
-                      {INTERNAL_MODULES.map(m => (
-                        <option key={m.id} value={m.id}>{m.name}</option>
+                      {INTERNAL_MODULES.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name}
+                        </option>
                       ))}
                     </select>
                   )}
                   {formData.targetType === 'CATEGORY' && (
-                    <select 
+                    <select
                       value={formData.targetValue}
-                      onChange={e => setFormData({...formData, targetValue: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, targetValue: e.target.value })}
                       className="w-full glass-input bg-zinc-900"
                     >
-                      {categories.map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
                       ))}
                     </select>
                   )}
                   {formData.targetType === 'EXTERNAL' && (
-                    <input 
+                    <input
                       required
-                      type="text" 
+                      type="text"
                       value={formData.targetValue}
-                      onChange={e => setFormData({...formData, targetValue: e.target.value})}
-                      className="w-full glass-input" 
+                      onChange={(e) => setFormData({ ...formData, targetValue: e.target.value })}
+                      className="w-full glass-input"
                       placeholder="https://..."
                     />
                   )}
@@ -271,19 +315,25 @@ export default function NavigationManager({ initialItems, categories }: { initia
 
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">排序</label>
-                    <input 
-                      type="number" 
+                    <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+                      排序
+                    </label>
+                    <input
+                      type="number"
                       value={formData.order}
-                      onChange={e => setFormData({...formData, order: parseInt(e.target.value)})}
-                      className="w-full glass-input" 
+                      onChange={(e) =>
+                        setFormData({ ...formData, order: parseInt(e.target.value) })
+                      }
+                      className="w-full glass-input"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">状态</label>
-                    <select 
+                    <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+                      状态
+                    </label>
+                    <select
                       value={formData.status}
-                      onChange={e => setFormData({...formData, status: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                       className="w-full glass-input bg-zinc-900"
                     >
                       <option value="active">显示</option>
@@ -293,21 +343,25 @@ export default function NavigationManager({ initialItems, categories }: { initia
                 </div>
 
                 <div className="pt-4 flex justify-end gap-3">
-                  <button 
+                  <button
                     type="button"
                     onClick={closeModal}
                     className="px-6 py-2 rounded-lg text-sm font-medium border border-white/10 hover:bg-white/5 transition-colors"
                   >
                     取消
                   </button>
-                  <button 
+                  <button
                     disabled={isSubmitting}
                     type="submit"
                     className="cyber-button text-sm flex items-center gap-2 min-w-[120px] justify-center"
                   >
                     {isSubmitting ? (
                       <Loader2 className="animate-spin" size={16} />
-                    ) : editingItem ? '更新导航' : '确认新增'}
+                    ) : editingItem ? (
+                      '更新导航'
+                    ) : (
+                      '确认新增'
+                    )}
                   </button>
                 </div>
               </form>

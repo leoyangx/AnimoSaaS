@@ -1,25 +1,59 @@
 import { NextResponse } from 'next/server';
-import { updateNavigation } from '@/lib/settings-service';
+import { db } from '@/lib/db';
+import { prisma } from '@/lib/prisma';
+import { getSession } from '@/lib/auth';
+import { navigationItemSchema } from '@/lib/validators';
+import { z } from 'zod';
+import { errorResponse, successResponse, validationErrorResponse } from '@/lib/api-response';
 
 export async function POST(req: Request) {
   try {
+    // 验证管理员权限
+    const session = await getSession('admin');
+    if (!session || (session as any).role !== 'admin') {
+      return errorResponse('未授权访问', 401);
+    }
+
     const body = await req.json();
-    
+
+    // 验证数据格式
     if (!Array.isArray(body)) {
-      return NextResponse.json({ error: '导航数据格式错误，应为数组' }, { status: 400 });
+      return errorResponse('导航数据格式错误，应为数组', 400);
     }
 
-    // Basic item validation
-    for (const item of body) {
-      if (!item.label || item.label.trim() === '') {
-        return NextResponse.json({ error: '导航标签不能为空' }, { status: 400 });
+    // 使用 Zod 验证每个导航项
+    const navigationArraySchema = z.array(navigationItemSchema);
+    const validationResult = navigationArraySchema.safeParse(body);
+
+    if (!validationResult.success) {
+      return validationErrorResponse(validationResult.error);
+    }
+
+    // 更新导航配置
+    await prisma.$transaction(async (tx) => {
+      await tx.topNav.deleteMany({});
+
+      for (let i = 0; i < validationResult.data.length; i++) {
+        const { ...navItem } = validationResult.data[i];
+        await tx.topNav.create({
+          data: {
+            ...navItem,
+            order: i,
+          },
+        });
       }
-    }
+    });
 
-    const updated = await updateNavigation(body);
-    return NextResponse.json(updated);
+    // 记录操作日志
+    await db.logs.create(
+      'UPDATE_NAVIGATION',
+      (session as any).email,
+      `更新导航配置，共 ${body.length} 项`
+    );
+
+    return successResponse({ count: body.length }, '导航配置更新成功');
   } catch (error) {
     console.error('Failed to update navigation:', error);
-    return NextResponse.json({ error: '保存导航失败，请检查数据格式' }, { status: 500 });
+    return errorResponse('保存导航失败', 500, error);
   }
 }

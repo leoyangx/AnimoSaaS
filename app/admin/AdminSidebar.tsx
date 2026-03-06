@@ -2,12 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  LayoutDashboard, 
-  Users, 
-  Package, 
-  Key, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Users,
+  Package,
+  Key,
+  Settings,
   Home,
   LogOut,
   Activity,
@@ -15,7 +15,7 @@ import {
   Database,
   Globe,
   Palette,
-  Shield
+  Shield,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -26,7 +26,7 @@ const MENU_GROUPS = [
     items: [
       { name: '控制面板', icon: LayoutDashboard, href: '/admin' },
       { name: '操作日志', icon: Activity, href: '/admin/logs' },
-    ]
+    ],
   },
   {
     label: '内容管理',
@@ -34,14 +34,14 @@ const MENU_GROUPS = [
       { name: '素材上传管理', icon: Package, href: '/admin/assets' },
       { name: '素材分类设置', icon: Database, href: '/admin/asset-categories' },
       { name: '顶部导航设置', icon: Globe, href: '/admin/navigation' },
-    ]
+    ],
   },
   {
     label: '用户管理',
     items: [
       { name: '用户列表', icon: Users, href: '/admin/users' },
       { name: '邀请码管理', icon: Key, href: '/admin/codes' },
-    ]
+    ],
   },
   {
     label: '系统配置',
@@ -49,8 +49,8 @@ const MENU_GROUPS = [
       { name: '品牌与视觉', icon: Palette, href: '/admin/settings' },
       { name: '存储引擎', icon: Database, href: '/admin/storage' },
       { name: '安全与验证', icon: Shield, href: '/admin/auth-settings' },
-    ]
-  }
+    ],
+  },
 ];
 
 export default function AdminSidebar() {
@@ -64,8 +64,12 @@ export default function AdminSidebar() {
             A
           </div>
           <div className="flex flex-col">
-            <span className="font-display font-black text-lg tracking-tight text-gradient-white">AnimoSaaS</span>
-            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">管理控制台</span>
+            <span className="font-display font-black text-lg tracking-tight text-gradient-white">
+              AnimoSaaS
+            </span>
+            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">
+              管理控制台
+            </span>
           </div>
         </Link>
       </div>
@@ -89,15 +93,18 @@ export default function AdminSidebar() {
                   )}
                 >
                   {pathname === item.href && (
-                    <motion.div 
+                    <motion.div
                       layoutId="sidebar-active"
                       className="absolute left-0 w-1 h-6 bg-brand-primary rounded-r-full"
                     />
                   )}
-                  <item.icon size={18} className={cn(
-                    "transition-transform group-hover:scale-110",
-                    pathname === item.href ? "text-brand-primary" : "text-zinc-500"
-                  )} />
+                  <item.icon
+                    size={18}
+                    className={cn(
+                      'transition-transform group-hover:scale-110',
+                      pathname === item.href ? 'text-brand-primary' : 'text-zinc-500'
+                    )}
+                  />
                   {item.name}
                 </Link>
               ))}

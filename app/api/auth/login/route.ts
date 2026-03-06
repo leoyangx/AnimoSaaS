@@ -1,34 +1,67 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { createToken } from '@/lib/auth';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+import { loginSchema } from '@/lib/validators';
+import { errorResponse, successResponse, validationErrorResponse } from '@/lib/api-response';
 import bcrypt from 'bcryptjs';
 
 export async function POST(req: Request) {
   try {
-    const { email, password } = await req.json();
+    // 速率限制检查
+    const ip = getClientIp(req);
+    const rateLimitError = checkRateLimit(ip, 'auth');
+    if (rateLimitError) return rateLimitError;
+
+    // 解析请求体
+    const body = await req.json();
+
+    // Zod 验证
+    const validationResult = loginSchema.safeParse(body);
+    if (!validationResult.success) {
+      return validationErrorResponse(validationResult.error);
+    }
+
+    const { email, password } = validationResult.data;
+
+    // 查询用户
     const user = await db.users.getByEmail(email);
 
-    if (!user) {
-      return NextResponse.json({ error: '邮箱或密码错误' }, { status: 401 });
+    // 验证密码（使用统一错误消息防止用户枚举）
+    const isPasswordValid = user ? await bcrypt.compare(password, user.password || '') : false;
+
+    if (!user || !isPasswordValid) {
+      return errorResponse('邮箱或密码错误', 401);
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password || '');
-    if (!isPasswordValid && password !== user.password) { // Fallback for initial dummy data
-      return NextResponse.json({ error: '邮箱或密码错误' }, { status: 401 });
-    }
-
+    // 检查账号状态
     if (user.disabled) {
-      return NextResponse.json({ error: '账号已被禁用' }, { status: 403 });
+      return errorResponse('账号已被禁用，请联系管理员', 403);
     }
 
+    // 生成 JWT token
     const token = await createToken({ id: user.id, email: user.email, role: user.role });
-    
-    const response = NextResponse.json({ success: true, user: { email: user.email, role: user.role } });
+
+    // 更新最后登录信息
+    await db.users.updateLastLogin(user.id);
+
+    // 设置 cookie
+    const response = successResponse(
+      {
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+        },
+      },
+      '登录成功'
+    );
+
     const cookieName = user.role === 'admin' ? 'admin_token' : 'auth_token';
-    
+
     response.cookies.set(cookieName, token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production' && !process.env.DISABLE_SECURE_COOKIE,
+      secure: process.env.NODE_ENV === 'production' && process.env.DISABLE_SECURE_COOKIE !== 'true',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/',
@@ -36,6 +69,7 @@ export async function POST(req: Request) {
 
     return response;
   } catch (e) {
-    return NextResponse.json({ error: '服务器错误' }, { status: 500 });
+    console.error('Login error:', e);
+    return errorResponse('登录失败，请稍后重试', 500, e);
   }
 }

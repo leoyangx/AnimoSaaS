@@ -2,10 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { StorageEngine } from '@/lib/storage';
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     let asset = await db.assets.getById(id);
@@ -22,7 +19,7 @@ export async function GET(
           base64Path += '=';
         }
         const decodedPath = Buffer.from(base64Path, 'base64').toString('utf-8');
-        
+
         asset = {
           id,
           title: decodedPath.split('/').pop() || '未知素材',
@@ -33,7 +30,7 @@ export async function GET(
           downloadUrl: decodedPath,
           storageProvider: 'AList',
           createdAt: new Date(),
-          downloadCount: 0
+          downloadCount: 0,
         } as any;
       } catch (e) {
         console.error('[Thumbnail Proxy] ID Decode Error:', e);
@@ -45,15 +42,19 @@ export async function GET(
     }
 
     const storage = new StorageEngine(config);
-    const thumbnailUrl = await storage.resolveThumbnailUrl(asset.thumbnail, asset.storageProvider || 'AList');
+    const thumbnailUrl = await storage.resolveThumbnailUrl(
+      asset.thumbnail,
+      asset.storageProvider || 'AList'
+    );
 
     // 后端代理请求，绕过防盗链
     // 动态提取网盘域名的 origin 作为 Referer，确保兼容性
     const targetUrl = new URL(thumbnailUrl);
     const headers: Record<string, string> = {
-      'Referer': targetUrl.origin,
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+      Referer: targetUrl.origin,
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
     };
 
     // 如果是 AList，添加 Authorization 头
@@ -62,7 +63,7 @@ export async function GET(
     }
 
     const response = await fetch(thumbnailUrl, {
-      headers
+      headers,
     });
 
     if (!response.ok) {

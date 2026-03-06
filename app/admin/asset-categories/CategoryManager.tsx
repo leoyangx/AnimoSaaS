@@ -1,7 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Search, Edit3, Trash2, Database, X, Loader2, Save, ChevronRight, ChevronDown, Folder, FolderOpen } from 'lucide-react';
+import {
+  Plus,
+  Search,
+  Edit3,
+  Trash2,
+  Database,
+  X,
+  Loader2,
+  Save,
+  ChevronRight,
+  ChevronDown,
+  Folder,
+  FolderOpen,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -19,7 +32,7 @@ export default function CategoryManager({ initialCategories }: { initialCategori
     parentId: '',
     order: 0,
     status: 'active',
-    icon: ''
+    icon: '',
   });
 
   const toggleExpand = (id: string) => {
@@ -37,7 +50,7 @@ export default function CategoryManager({ initialCategories }: { initialCategori
         parentId: category.parentId || '',
         order: category.order,
         status: category.status,
-        icon: category.icon || ''
+        icon: category.icon || '',
       });
     } else {
       setEditingCategory(null);
@@ -46,7 +59,7 @@ export default function CategoryManager({ initialCategories }: { initialCategori
         parentId: parentId,
         order: 0,
         status: 'active',
-        icon: ''
+        icon: '',
       });
     }
     setIsModalOpen(true);
@@ -62,7 +75,9 @@ export default function CategoryManager({ initialCategories }: { initialCategori
     setIsSubmitting(true);
 
     try {
-      const url = editingCategory ? `/api/admin/categories/${editingCategory.id}` : '/api/admin/categories';
+      const url = editingCategory
+        ? `/api/admin/categories/${editingCategory.id}`
+        : '/api/admin/categories';
       const method = editingCategory ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
@@ -70,14 +85,14 @@ export default function CategoryManager({ initialCategories }: { initialCategori
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          parentId: formData.parentId === '' ? null : formData.parentId
-        })
+          parentId: formData.parentId === '' ? null : formData.parentId,
+        }),
       });
 
       if (res.ok) {
         router.refresh();
         closeModal();
-        window.location.reload(); 
+        window.location.reload();
       }
     } catch (error) {
       console.error('Failed to save category:', error);
@@ -106,45 +121,59 @@ export default function CategoryManager({ initialCategories }: { initialCategori
 
     return (
       <div key={cat.id}>
-        <div className={cn(
-          "flex items-center gap-4 px-6 py-4 border-b border-white/5 hover:bg-white/5 transition-colors group",
-          level > 0 && "bg-white/[0.01]"
-        )}>
-          <div style={{ paddingLeft: `${level * 24}px` }} className="flex items-center gap-3 flex-1">
+        <div
+          className={cn(
+            'flex items-center gap-4 px-6 py-4 border-b border-white/5 hover:bg-white/5 transition-colors group',
+            level > 0 && 'bg-white/[0.01]'
+          )}
+        >
+          <div
+            style={{ paddingLeft: `${level * 24}px` }}
+            className="flex items-center gap-3 flex-1"
+          >
             {hasChildren ? (
-              <button onClick={() => toggleExpand(cat.id)} className="text-zinc-500 hover:text-white transition-colors">
+              <button
+                onClick={() => toggleExpand(cat.id)}
+                className="text-zinc-500 hover:text-white transition-colors"
+              >
                 {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
               </button>
             ) : (
               <div className="w-4" />
             )}
             {hasChildren ? (
-              isExpanded ? <FolderOpen size={18} className="text-brand-primary" /> : <Folder size={18} className="text-brand-primary" />
+              isExpanded ? (
+                <FolderOpen size={18} className="text-brand-primary" />
+              ) : (
+                <Folder size={18} className="text-brand-primary" />
+              )
             ) : (
               <Database size={18} className="text-zinc-500" />
             )}
             <span className="text-sm font-bold text-white/90">{cat.name}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-zinc-600">ID: {cat.id.substring(0, 8)}</span>
+            <span className="text-[10px] font-mono text-zinc-600">
+              ID: {cat.id.substring(0, 8)}
+            </span>
             <span className="text-[10px] font-mono text-zinc-600">Order: {cat.order}</span>
           </div>
           <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity min-w-[120px]">
-            <button 
+            <button
               onClick={() => openModal(null, cat.id)}
               className="p-2 rounded-lg bg-white/5 text-zinc-500 hover:text-brand-primary transition-colors"
               title="添加子分类"
             >
               <Plus size={16} />
             </button>
-            <button 
+            <button
               onClick={() => openModal(cat)}
               className="p-2 rounded-lg bg-white/5 text-zinc-500 hover:text-brand-primary transition-colors"
               title="编辑分类"
             >
               <Edit3 size={16} />
             </button>
-            <button 
+            <button
               onClick={() => handleDelete(cat.id)}
               className="p-2 rounded-lg bg-white/5 text-zinc-500 hover:text-red-500 transition-colors"
               title="删除分类"
@@ -169,7 +198,7 @@ export default function CategoryManager({ initialCategories }: { initialCategori
           <h1 className="text-2xl font-display font-bold">素材导航设置</h1>
           <p className="text-zinc-500 text-sm">管理素材的分类结构，支持多级嵌套与排序。</p>
         </div>
-        <button 
+        <button
           onClick={() => openModal()}
           className="cyber-button text-sm flex items-center gap-2"
         >
@@ -187,11 +216,9 @@ export default function CategoryManager({ initialCategories }: { initialCategori
         </div>
         <div className="divide-y divide-white/5">
           {categories.length === 0 ? (
-            <div className="px-6 py-12 text-center text-zinc-500">
-              暂无分类项。
-            </div>
+            <div className="px-6 py-12 text-center text-zinc-500">暂无分类项。</div>
           ) : (
-            categories.map(cat => renderCategoryRow(cat))
+            categories.map((cat) => renderCategoryRow(cat))
           )}
         </div>
       </div>
@@ -223,22 +250,26 @@ export default function CategoryManager({ initialCategories }: { initialCategori
 
               <form onSubmit={handleSubmit} className="p-6 space-y-6">
                 <div className="space-y-2">
-                  <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">分类名称</label>
-                  <input 
+                  <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+                    分类名称
+                  </label>
+                  <input
                     required
-                    type="text" 
+                    type="text"
                     value={formData.name}
-                    onChange={e => setFormData({...formData, name: e.target.value})}
-                    className="w-full glass-input" 
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full glass-input"
                     placeholder="例如：角色模型"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">父级分类</label>
-                  <select 
+                  <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+                    父级分类
+                  </label>
+                  <select
                     value={formData.parentId}
-                    onChange={e => setFormData({...formData, parentId: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, parentId: e.target.value })}
                     className="w-full glass-input bg-zinc-900"
                   >
                     <option value="">无 (作为一级分类)</option>
@@ -251,9 +282,10 @@ export default function CategoryManager({ initialCategories }: { initialCategori
                           return acc;
                         }, []);
                       };
-                      return flatten(categories).map(c => (
+                      return flatten(categories).map((c) => (
                         <option key={c.id} value={c.id} disabled={editingCategory?.id === c.id}>
-                          {'\u00A0'.repeat(c.level * 4)}{c.name}
+                          {'\u00A0'.repeat(c.level * 4)}
+                          {c.name}
                         </option>
                       ));
                     })()}
@@ -262,19 +294,25 @@ export default function CategoryManager({ initialCategories }: { initialCategori
 
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">排序</label>
-                    <input 
-                      type="number" 
+                    <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+                      排序
+                    </label>
+                    <input
+                      type="number"
                       value={formData.order}
-                      onChange={e => setFormData({...formData, order: parseInt(e.target.value)})}
-                      className="w-full glass-input" 
+                      onChange={(e) =>
+                        setFormData({ ...formData, order: parseInt(e.target.value) })
+                      }
+                      className="w-full glass-input"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">状态</label>
-                    <select 
+                    <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+                      状态
+                    </label>
+                    <select
                       value={formData.status}
-                      onChange={e => setFormData({...formData, status: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                       className="w-full glass-input bg-zinc-900"
                     >
                       <option value="active">启用</option>
@@ -284,21 +322,25 @@ export default function CategoryManager({ initialCategories }: { initialCategori
                 </div>
 
                 <div className="pt-4 flex justify-end gap-3">
-                  <button 
+                  <button
                     type="button"
                     onClick={closeModal}
                     className="px-6 py-2 rounded-lg text-sm font-medium border border-white/10 hover:bg-white/5 transition-colors"
                   >
                     取消
                   </button>
-                  <button 
+                  <button
                     disabled={isSubmitting}
                     type="submit"
                     className="cyber-button text-sm flex items-center gap-2 min-w-[120px] justify-center"
                   >
                     {isSubmitting ? (
                       <Loader2 className="animate-spin" size={16} />
-                    ) : editingCategory ? '更新分类' : '确认新增'}
+                    ) : editingCategory ? (
+                      '更新分类'
+                    ) : (
+                      '确认新增'
+                    )}
                   </button>
                 </div>
               </form>

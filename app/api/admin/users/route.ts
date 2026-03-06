@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   }
 
   const { email, password } = await req.json();
-  
+
   const existingUser = await db.users.getByEmail(email);
   if (existingUser) {
     return NextResponse.json({ error: '用户已存在' }, { status: 400 });
@@ -20,7 +20,7 @@ export async function POST(req: Request) {
   const user = await db.users.create({
     email,
     password: hashedPassword,
-    role: 'student'
+    role: 'student',
   });
 
   // Log action
