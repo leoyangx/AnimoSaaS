@@ -10,7 +10,8 @@
       "Bash(mkdir:*)",
       "Bash(npm run:*)",
       "Bash(rm:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(chmod +x:*)"
     ]
   }
 }
