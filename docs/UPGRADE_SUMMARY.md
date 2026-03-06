@@ -46,7 +46,7 @@
 - ✅ 管理端点：1分钟100次
 - ✅ 下载端点：1分钟10次
 - ✅ 上传端点：1分钟5次
-- ✅ 添加速率限制响应头（Retry-After, X-RateLimit-*）
+- ✅ 添加速率限制响应头（Retry-After, X-RateLimit-\*）
 
 #### 1.6 修复 /api/admin/navigation 认证漏洞
 

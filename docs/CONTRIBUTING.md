@@ -13,29 +13,34 @@
 ### 安装步骤
 
 1. Fork 并克隆仓库
+
 ```bash
 git clone https://github.com/your-username/animosaas.git
 cd animosaas
 ```
 
 2. 安装依赖
+
 ```bash
 npm install
 ```
 
 3. 配置环境变量
+
 ```bash
 cp .env.example .env
 # 编辑 .env 文件，设置必需的环境变量
 ```
 
 4. 运行数据库迁移
+
 ```bash
 npx prisma migrate dev
 npx prisma generate
 ```
 
 5. 启动开发服务器
+
 ```bash
 npm run dev
 ```
@@ -63,6 +68,7 @@ npm run dev
 ```
 
 **类型（type）：**
+
 - `feat`: 新功能
 - `fix`: Bug 修复
 - `docs`: 文档更新
@@ -73,6 +79,7 @@ npm run dev
 - `chore`: 构建过程或辅助工具的变动
 
 **示例：**
+
 ```
 feat(auth): 添加双因素认证
 
@@ -105,6 +112,7 @@ npm run type-check
 ### Git Hooks
 
 项目配置了 Husky 和 lint-staged，在提交前会自动：
+
 - 运行 ESLint 检查并自动修复
 - 运行 Prettier 格式化
 - 运行类型检查
@@ -114,32 +122,38 @@ npm run type-check
 ## Pull Request 流程
 
 1. **创建分支**
+
 ```bash
 git checkout -b feature/your-feature-name
 ```
 
 2. **开发和提交**
+
 ```bash
 git add .
 git commit -m "feat: 添加新功能"
 ```
 
 3. **推送到远程**
+
 ```bash
 git push origin feature/your-feature-name
 ```
 
 4. **创建 Pull Request**
+
 - 在 GitHub 上创建 PR
 - 填写 PR 模板
 - 等待代码审查
 
 5. **代码审查**
+
 - 至少需要 1 个审查者批准
 - 所有 CI 检查必须通过
 - 解决所有审查意见
 
 6. **合并**
+
 - 使用 Squash and Merge
 - 删除源分支
 
@@ -169,6 +183,7 @@ npm run test:coverage
 ### 更新文档
 
 如果您的更改影响了：
+
 - API 接口 - 更新 API 文档
 - 配置选项 - 更新配置文档
 - 用户功能 - 更新用户指南
@@ -185,6 +200,7 @@ npm run test:coverage
 ### Bug 报告
 
 使用 GitHub Issues 报告 Bug，请包含：
+
 - 问题描述
 - 复现步骤
 - 预期行为
@@ -195,6 +211,7 @@ npm run test:coverage
 ### 功能请求
 
 使用 GitHub Issues 提交功能请求，请包含：
+
 - 功能描述
 - 使用场景
 - 预期效果
@@ -203,6 +220,7 @@ npm run test:coverage
 ## 代码审查标准
 
 审查者会检查：
+
 - 代码质量和可读性
 - 是否遵循项目规范
 - 是否有充分的测试
@@ -213,6 +231,7 @@ npm run test:coverage
 ## 安全问题
 
 如果发现安全漏洞，请：
+
 1. **不要**公开提交 Issue
 2. 发送邮件到 security@example.com
 3. 提供详细的漏洞信息

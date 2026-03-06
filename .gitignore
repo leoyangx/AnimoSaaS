@@ -1,7 +1,19 @@
+# 敏感文件
+.env
+.env.production
+.env.local
+
+# 依赖与构建
 node_modules/
 .next/
-coverage/
-.DS_Store
+out/
+build/
+
+# 日志与临时文件
 *.log
-.env*
-!.env.example
+.claude/
+.eslintcache
+*.tsbuildinfo
+
+# 系统文件
+.DS_Store

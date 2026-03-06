@@ -3,6 +3,7 @@
 ## 🚀 升级已完成！
 
 AnimoSaaS v2.0.0 已成功升级，包含以下改进：
+
 - ✅ 修复 9 个安全漏洞
 - ✅ 新增 12 个核心文件
 - ✅ 优化数据库性能（9个索引）
@@ -25,6 +26,7 @@ cp .env.example .env
 ```
 
 **示例配置：**
+
 ```env
 DATABASE_URL="postgresql://animosaas:animosaas_pass@localhost:5432/animosaas_db"
 JWT_SECRET="your-super-secret-jwt-key-at-least-32-characters-long"
@@ -36,6 +38,7 @@ DISABLE_SECURE_COOKIE="true"
 ### 2. 启动数据库
 
 **使用 Docker Compose（推荐）：**
+
 ```bash
 docker-compose up -d db
 ```
@@ -62,11 +65,13 @@ npm install
 ### 5. 初始化管理员账号
 
 启动开发服务器：
+
 ```bash
 npm run dev
 ```
 
 访问初始化端点：
+
 ```
 http://localhost:3000/api/init
 ```
@@ -78,6 +83,7 @@ http://localhost:3000/api/init
 访问：`http://localhost:3000/login`
 
 使用以下凭据登录：
+
 - 邮箱：`admin@example.com`
 - 密码：你在 `.env` 中设置的 `ADMIN_PASSWORD`
 
@@ -92,6 +98,7 @@ npm list zod sharp
 ```
 
 应该看到：
+
 - `zod@3.x.x` ✅
 - `sharp@0.34.x` ✅
 
@@ -158,6 +165,7 @@ curl -X POST http://localhost:3000/api/auth/login \
 **错误**：`P1000: Authentication failed`
 
 **解决**：
+
 1. 检查 `DATABASE_URL` 是否正确
 2. 确保数据库服务已启动
 3. 验证数据库用户名和密码
@@ -167,6 +175,7 @@ curl -X POST http://localhost:3000/api/auth/login \
 **错误**：`P3009: migrate found failed migrations`
 
 **解决**：
+
 ```bash
 npx prisma migrate resolve --applied add_indexes_and_soft_delete
 ```
@@ -176,6 +185,7 @@ npx prisma migrate resolve --applied add_indexes_and_soft_delete
 **错误**：网络连接问题
 
 **解决**：
+
 ```bash
 npm install --legacy-peer-deps
 ```
@@ -183,6 +193,7 @@ npm install --legacy-peer-deps
 ### 问题：管理员无法登录
 
 **解决**：
+
 1. 确认 `ADMIN_PASSWORD` 符合要求（12位+大小写+数字）
 2. 重新访问 `/api/init` 初始化
 3. 检查控制台是否有临时密码
