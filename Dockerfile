@@ -46,9 +46,9 @@ RUN ls -la .next/standalone/server.js || (echo "ERROR: .next/standalone/server.j
 FROM node:20-slim AS runner
 WORKDIR /app
 
-# 安装运行时依赖：OpenSSL + bash + tini（PID 1 信号转发）+ curl（健康检查）
+# 安装运行时依赖：OpenSSL + bash + tini（PID 1 信号转发）+ curl（健康检查）+ postgresql-client（pg_isready）
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends openssl bash tini curl && \
+    apt-get install -y --no-install-recommends openssl bash tini curl postgresql-client && \
     rm -rf /var/lib/apt/lists/*
 
 # 创建用户

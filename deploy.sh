@@ -224,8 +224,24 @@ deploy() {
     echo -e "  停止服务:      ${YELLOW}./deploy.sh --stop${NC}"
     echo ""
   else
-    echo -e "${YELLOW}[警告] 服务启动超时，请检查日志:${NC}"
-    echo -e "  $COMPOSE_CMD logs app"
+    echo -e "${RED}[失败] 服务启动超时（${MAX_WAIT}s），自动收集诊断信息...${NC}"
+    echo ""
+    echo -e "${YELLOW}--- 数据库容器状态 ---${NC}"
+    docker inspect --format='状态: {{.State.Status}} | 健康: {{.State.Health.Status}}' animosaas-db 2>/dev/null || echo "  数据库容器不存在"
+    echo ""
+    echo -e "${YELLOW}--- 应用容器状态 ---${NC}"
+    docker inspect --format='状态: {{.State.Status}} | 重启次数: {{.RestartCount}}' animosaas-app 2>/dev/null || echo "  应用容器不存在"
+    echo ""
+    echo -e "${YELLOW}--- 应用日志（最近 30 行） ---${NC}"
+    $COMPOSE_CMD logs app --tail 30 2>/dev/null || true
+    echo ""
+    echo -e "${YELLOW}--- 数据库日志（最近 10 行） ---${NC}"
+    $COMPOSE_CMD logs db --tail 10 2>/dev/null || true
+    echo ""
+    echo -e "${BLUE}手动排查:${NC}"
+    echo -e "  查看完整日志:  $COMPOSE_CMD logs app"
+    echo -e "  进入容器:      docker exec -it animosaas-app bash"
+    echo -e "  重新部署:      ./deploy.sh"
   fi
 }
 

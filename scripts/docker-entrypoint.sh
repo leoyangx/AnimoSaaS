@@ -50,20 +50,49 @@ if [ ${#JWT_SECRET} -lt 32 ]; then
 fi
 echo "  环境变量校验通过"
 
+# ========== 从 DATABASE_URL 解析连接参数 ==========
+# 格式: postgresql://user:password@host:port/dbname
+parse_database_url() {
+  local url="$DATABASE_URL"
+  # 去掉协议前缀
+  local stripped="${url#*://}"
+  # 提取 user:pass
+  local userpass="${stripped%%@*}"
+  local rest="${stripped#*@}"
+  # 提取 host:port
+  local hostport="${rest%%/*}"
+  # 提取 dbname（去掉查询参数）
+  local dbname="${rest#*/}"
+  dbname="${dbname%%\?*}"
+
+  DB_USER="${userpass%%:*}"
+  DB_HOST="${hostport%%:*}"
+  DB_PORT="${hostport#*:}"
+  DB_NAME="$dbname"
+
+  # 如果没有端口（host 和 port 相同），默认 5432
+  if [ "$DB_PORT" = "$DB_HOST" ]; then
+    DB_PORT="5432"
+  fi
+}
+
+parse_database_url
+echo "  数据库: ${DB_USER}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
+
 # ========== 等待数据库就绪 ==========
 echo "[1/4] 等待数据库连接..."
 MAX_RETRIES=${DB_CONNECT_RETRIES:-30}
 RETRY_INTERVAL=${DB_CONNECT_INTERVAL:-2}
 RETRY_COUNT=0
 
-until node -e "
-  const { PrismaClient } = require('@prisma/client');
-  const p = new PrismaClient();
-  p.\$queryRaw\`SELECT 1\`.then(() => { p.\$disconnect(); process.exit(0); }).catch(() => process.exit(1));
-" 2>/dev/null; do
+until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -q 2>&1; do
   RETRY_COUNT=$((RETRY_COUNT + 1))
   if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
-    echo "  [ERROR] 数据库连接超时（已重试 ${MAX_RETRIES} 次），退出..."
+    echo "  [ERROR] 数据库连接超时（已重试 ${MAX_RETRIES} 次）"
+    echo "  [DEBUG] 目标: ${DB_HOST}:${DB_PORT}, 用户: ${DB_USER}, 数据库: ${DB_NAME}"
+    echo "  [DEBUG] DATABASE_URL: ${DATABASE_URL%%@*}@***"
+    echo "  [DEBUG] 尝试 DNS 解析..."
+    getent hosts "$DB_HOST" 2>&1 || echo "  [DEBUG] DNS 解析失败: $DB_HOST"
     exit 1
   fi
   echo "  数据库未就绪，重试中... ($RETRY_COUNT/$MAX_RETRIES)"
