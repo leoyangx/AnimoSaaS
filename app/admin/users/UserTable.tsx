@@ -151,7 +151,8 @@ export function UserTable({ initialUsers }: { initialUsers: any[] }) {
       </div>
 
       <div className="glass-card overflow-hidden">
-        <table className="w-full text-left border-collapse">
+        <div className="table-responsive">
+        <table className="w-full text-left border-collapse min-w-[700px]">
           <thead>
             <tr className="border-b border-white/10 bg-white/5">
               <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">
@@ -269,6 +270,7 @@ export function UserTable({ initialUsers }: { initialUsers: any[] }) {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       <AnimatePresence>

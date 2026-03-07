@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { getTenantIdFromRequestSafe } from '@/lib/tenant-context';
+import { getTenantBySlug } from '@/lib/tenant';
 import { StorageEngine } from '@/lib/storage';
 
 export async function GET(
@@ -9,8 +11,16 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    let asset = await db.assets.getById(id);
-    const config = await db.config.get();
+
+    // 获取租户 ID
+    let tenantId = getTenantIdFromRequestSafe(request);
+    if (!tenantId) {
+      const defaultTenant = await getTenantBySlug('default');
+      tenantId = defaultTenant?.id || '';
+    }
+
+    let asset = await db.assets.getById(id, tenantId);
+    const config = await db.config.get(tenantId);
 
     // 如果数据库中找不到，且 ID 以 alist- 开头，说明是动态获取的 AList 素材
     if (!asset && id.startsWith('alist-')) {
@@ -23,7 +33,7 @@ export async function GET(
           base64Path += '=';
         }
         const decodedPath = Buffer.from(base64Path, 'base64').toString('utf-8');
-        
+
         asset = {
           id,
           title: decodedPath.split('/').pop() || '未知素材',
@@ -34,7 +44,7 @@ export async function GET(
           downloadUrl: decodedPath,
           storageProvider: 'AList',
           createdAt: new Date(),
-          downloadCount: 0
+          downloadCount: 0,
         } as any;
       } catch (e) {
         console.error('[Download Proxy] ID Decode Error:', e);
@@ -48,7 +58,7 @@ export async function GET(
     // 1. 记录下载日志
     const session = await getSession();
     const userId = session ? (session as any).id : null;
-    await db.assets.incrementDownload(id, userId);
+    await db.assets.incrementDownload(id, tenantId, userId);
 
     // 2. 获取直链
     const storage = new StorageEngine(config);
@@ -60,11 +70,11 @@ export async function GET(
       if (storageError) {
         errorDetail = storageError;
       } else {
-        errorDetail = !downloadUrl 
-          ? 'Resolved URL is empty.' 
+        errorDetail = !downloadUrl
+          ? 'Resolved URL is empty.'
           : `Resolved URL is not an absolute HTTP link: "${downloadUrl}". This usually means AList API failed or the asset path is not a full URL.`;
       }
-      
+
       console.error(`[Download Proxy] Failed to resolve a valid download URL for asset ${id}. ${errorDetail}`);
       return new NextResponse(`Failed to resolve a valid download URL. Details: ${errorDetail}. Please check your storage configuration in Admin Settings.`, { status: 400 });
     }
@@ -79,11 +89,10 @@ export async function GET(
     const headers: Record<string, string> = {
       'Referer': targetUrl.origin,
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': '*/*'
+      'Accept': '*/*',
     };
 
     // 仅当目标 URL 包含 AList 域名时才发送 Authorization Token
-    // 避免将 Token 发送到第三方存储服务器（如 123pan, alipan）导致 403 错误
     if (asset.storageProvider === 'AList' && config.alistToken && config.alistUrl && downloadUrl.includes(new URL(config.alistUrl).hostname)) {
       headers['Authorization'] = config.alistToken;
       console.log('[Download Proxy] Adding Authorization header for AList internal URL');
@@ -92,8 +101,8 @@ export async function GET(
     console.log(`[Download Proxy] Fetching from: ${downloadUrl}`);
     const response = await fetch(downloadUrl, {
       headers,
-      redirect: 'follow', // 显式允许重定向
-      signal: AbortSignal.timeout(600000) // 10 minutes timeout
+      redirect: 'follow',
+      signal: AbortSignal.timeout(600000),
     });
 
     if (!response.ok) {
@@ -102,38 +111,32 @@ export async function GET(
       return new NextResponse(`Failed to fetch file from storage: ${response.statusText}`, { status: response.status });
     }
 
-    // 4. 构造响应头，强制浏览器原地弹出下载框并设置正确文件名
-    // 优先从 Content-Disposition 获取文件名，如果没有则从 URL 提取
+    // 构造响应头
     const remoteDisposition = response.headers.get('Content-Disposition');
     let remoteFilename = '';
-    
+
     if (remoteDisposition) {
-      const match = remoteDisposition.match(/filename\*=UTF-8''([^";]+)/i) || 
+      const match = remoteDisposition.match(/filename\*=UTF-8''([^";]+)/i) ||
                     remoteDisposition.match(/filename="?([^";]+)"?/i);
       if (match && match[1]) {
         remoteFilename = decodeURIComponent(match[1]);
       }
     }
-    
-    // 如果远程没有文件名，从 URL 提取
+
     if (!remoteFilename) {
       remoteFilename = downloadUrl.split('/').pop()?.split('?')[0] || '';
     }
 
     const urlExtension = remoteFilename.split('.').pop()?.toLowerCase() || '';
-    
-    // 智能处理文件名：如果标题已经包含后缀，则不再重复添加
+
     let finalFilename = asset.title;
     if (urlExtension && !finalFilename.toLowerCase().endsWith(`.${urlExtension}`)) {
       finalFilename = `${finalFilename}.${urlExtension}`;
     }
-    
-    // 构造 Content-Disposition
-    // filename 参数应为 ASCII，filename* 参数为 UTF-8 编码
+
     const asciiFilename = encodeURIComponent(finalFilename.replace(/[^\x00-\x7F]/g, '_'));
     const encodedFilename = encodeURIComponent(finalFilename);
 
-    // 使用 ReadableStream 进行流式转发，不占用服务器内存
     const stream = response.body;
     if (!stream) {
       console.error('[Download Proxy] Empty response body from storage');
@@ -141,9 +144,7 @@ export async function GET(
     }
 
     const contentType = response.headers.get('Content-Type') || 'application/octet-stream';
-    
-    // 如果返回的是 JSON 或 HTML，且状态码是 200，说明可能是 AList 的错误页面或 API 响应
-    // 允许图片和视频的 HTML 预览（虽然不常见），但主要防御 JSON 错误
+
     if (contentType.includes('application/json')) {
       const errorJson = await response.text().catch(() => '{}');
       console.error(`[Download Proxy] Storage provider returned JSON error: ${errorJson}`);
@@ -154,7 +155,6 @@ export async function GET(
 
     const responseHeaders: Record<string, string> = {
       'Content-Type': contentType,
-      // 同时提供 filename 和 filename* 以获得最佳兼容性
       'Content-Disposition': `attachment; filename="${asciiFilename}"; filename*=UTF-8''${encodedFilename}`,
       'Cache-Control': 'no-cache',
       'X-Content-Type-Options': 'nosniff',

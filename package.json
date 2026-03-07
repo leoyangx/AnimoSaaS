@@ -30,7 +30,18 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\" --ignore-path .gitignore",
     "type-check": "tsc --noEmit",
     "lint-staged": "lint-staged",
-    "prepare": "husky"
+    "prepare": "husky",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:seed:multitenant": "npx tsx scripts/migrate-to-multitenant.ts",
+    "db:rollback:multitenant": "npx tsx scripts/rollback-migration.ts",
+    "db:studio": "prisma studio",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@google/genai": "latest",
@@ -56,7 +67,10 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.4",
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "4.0.8",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/bcryptjs": "2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "22.13.4",
@@ -64,16 +78,20 @@
     "@types/react": "19.0.10",
     "@types/react-dom": "19.0.4",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@vitejs/plugin-react": "^5.1.4",
     "eslint": "9.20.1",
     "eslint-config-next": "15.1.7",
     "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
+    "jsdom": "^28.1.0",
     "lint-staged": "^16.3.2",
     "postcss": "8.5.3",
     "prettier": "^3.8.1",
     "prisma": "6.4.1",
     "tailwindcss": "4.0.8",
-    "typescript": "5.7.3"
+    "tsx": "^4.19.0",
+    "typescript": "5.7.3",
+    "vitest": "^4.0.18"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

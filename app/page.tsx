@@ -1,6 +1,7 @@
 import { Navbar } from '@/components/Navbar';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/auth';
+import { getTenantId } from '@/lib/tenant-context';
 import { Suspense } from 'react';
 import { Package, Download, ChevronRight, Eye } from 'lucide-react';
 import Link from 'next/link';
@@ -8,8 +9,9 @@ import { Asset, AssetCategory } from '@/lib/types';
 import { StorageEngine } from '@/lib/storage';
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
-  const config = await db.config.get();
-  const navItems = await db.navigation.getAll();
+  const tenantId = await getTenantId();
+  const config = await db.config.get(tenantId);
+  const navItems = await db.navigation.getAll(tenantId);
   const session = await getSession();
   const { category } = await searchParams;
 
@@ -26,8 +28,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ c
     navigation: navItems.filter((n) => n.status === 'active')
   };
 
-  const categories = await db.categories.getAll();
-  const allAssets = await db.assets.getAll();
+  const categories = await db.categories.getAll(tenantId);
+  const allAssets = await db.assets.getAll(tenantId);
 
   // Resolve category filter
   let activeCategoryId: string | null = null;

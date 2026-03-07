@@ -71,6 +71,8 @@ export function AssetCard({
               src={thumbnail}
               alt={asset.title}
               fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+              loading="lazy"
               className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
               referrerPolicy="no-referrer"
             />
@@ -150,14 +152,14 @@ export function AssetCard({
               {/* Visual Side */}
               <div className="flex-1 bg-zinc-900 flex items-center justify-center relative overflow-hidden">
                 <div className="absolute inset-0 opacity-20 blur-3xl">
-                  <Image src={thumbnail} alt={asset.title} fill className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <Image src={thumbnail} alt={asset.title} fill sizes="50vw" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
                 <div className="relative z-10 w-full h-full p-12">
                   {isVideo ? (
                     <video src={thumbnail} className="w-full h-full object-contain rounded-2xl shadow-2xl" controls autoPlay />
                   ) : (
                     <div className="relative w-full h-full">
-                      <Image src={thumbnail} alt={asset.title} fill className="object-contain rounded-2xl shadow-2xl" referrerPolicy="no-referrer" />
+                      <Image src={thumbnail} alt={asset.title} fill sizes="50vw" className="object-contain rounded-2xl shadow-2xl" referrerPolicy="no-referrer" />
                     </div>
                   )}
                 </div>

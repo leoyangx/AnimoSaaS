@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getTenantIdFromRequest } from '@/lib/tenant-context';
 import { errorResponse, successResponse, paginatedResponse } from '@/lib/api-response';
 import {
   getPaginationFromRequest,
@@ -16,6 +17,7 @@ export async function GET(req: Request) {
       return errorResponse('未授权访问', 401);
     }
 
+    const tenantId = getTenantIdFromRequest(req);
     const { searchParams } = new URL(req.url);
     const type = searchParams.get('type') || 'assets'; // assets, users, categories
     const params = getPaginationFromRequest(req);
@@ -28,37 +30,37 @@ export async function GET(req: Request) {
       case 'assets':
         [data, total] = await Promise.all([
           prisma.asset.findMany({
-            where: { deletedAt: { not: null } },
+            where: { tenantId, deletedAt: { not: null } },
             include: { assetCategory: true },
             orderBy: { deletedAt: 'desc' },
             skip,
             take,
           }),
-          prisma.asset.count({ where: { deletedAt: { not: null } } }),
+          prisma.asset.count({ where: { tenantId, deletedAt: { not: null } } }),
         ]);
         break;
 
       case 'users':
         [data, total] = await Promise.all([
           prisma.user.findMany({
-            where: { deletedAt: { not: null } },
+            where: { tenantId, deletedAt: { not: null } },
             orderBy: { deletedAt: 'desc' },
             skip,
             take,
           }),
-          prisma.user.count({ where: { deletedAt: { not: null } } }),
+          prisma.user.count({ where: { tenantId, deletedAt: { not: null } } }),
         ]);
         break;
 
       case 'categories':
         [data, total] = await Promise.all([
           prisma.assetCategory.findMany({
-            where: { deletedAt: { not: null } },
+            where: { tenantId, deletedAt: { not: null } },
             orderBy: { deletedAt: 'desc' },
             skip,
             take,
           }),
-          prisma.assetCategory.count({ where: { deletedAt: { not: null } } }),
+          prisma.assetCategory.count({ where: { tenantId, deletedAt: { not: null } } }),
         ]);
         break;
 
@@ -82,6 +84,7 @@ export async function DELETE(req: Request) {
       return errorResponse('未授权访问', 401);
     }
 
+    const tenantId = getTenantIdFromRequest(req);
     const { searchParams } = new URL(req.url);
     const type = searchParams.get('type') || 'assets';
 
@@ -90,19 +93,19 @@ export async function DELETE(req: Request) {
     switch (type) {
       case 'assets':
         result = await prisma.asset.deleteMany({
-          where: { deletedAt: { not: null } },
+          where: { tenantId, deletedAt: { not: null } },
         });
         break;
 
       case 'users':
         result = await prisma.user.deleteMany({
-          where: { deletedAt: { not: null } },
+          where: { tenantId, deletedAt: { not: null } },
         });
         break;
 
       case 'categories':
         result = await prisma.assetCategory.deleteMany({
-          where: { deletedAt: { not: null } },
+          where: { tenantId, deletedAt: { not: null } },
         });
         break;
 

@@ -16,7 +16,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./backups:/backups
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U animosaas -d animosaas_db"]
       interval: 10s
@@ -48,10 +48,16 @@ services:
       # 管理员密码（必须修改）
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
 
+      # 多租户配置
+      DEFAULT_TENANT_NAME: ${DEFAULT_TENANT_NAME:-Default}
+      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-superadmin@animosaas.com}
+      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-SuperAdmin123!}
+      TENANT_MODE: ${TENANT_MODE:-path}
+
       # Node 环境
       NODE_ENV: production
 
-      # Cookie 安全（生产环境必须为 false）
+      # Cookie 安全（生产环境设为 false 使用 HTTPS）
       DISABLE_SECURE_COOKIE: ${DISABLE_SECURE_COOKIE:-false}
 
       # 应用配置
@@ -78,7 +84,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
     logging:
       driver: "json-file"
       options:

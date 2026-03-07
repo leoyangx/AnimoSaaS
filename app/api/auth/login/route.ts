@@ -4,6 +4,8 @@ import { createToken } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { loginSchema } from '@/lib/validators';
 import { errorResponse, successResponse, validationErrorResponse } from '@/lib/api-response';
+import { getTenantIdFromRequestSafe } from '@/lib/tenant-context';
+import { getTenantBySlug } from '@/lib/tenant';
 import bcrypt from 'bcryptjs';
 
 export async function POST(req: Request) {
@@ -12,6 +14,17 @@ export async function POST(req: Request) {
     const ip = getClientIp(req);
     const rateLimitError = checkRateLimit(ip, 'auth');
     if (rateLimitError) return rateLimitError;
+
+    // 获取租户 ID
+    let tenantId = getTenantIdFromRequestSafe(req);
+    if (!tenantId) {
+      // 回退到默认租户
+      const defaultTenant = await getTenantBySlug('default');
+      if (!defaultTenant) {
+        return errorResponse('系统未初始化', 503);
+      }
+      tenantId = defaultTenant.id;
+    }
 
     // 解析请求体
     const body = await req.json();
@@ -25,7 +38,7 @@ export async function POST(req: Request) {
     const { email, password } = validationResult.data;
 
     // 查询用户
-    const user = await db.users.getByEmail(email);
+    const user = await db.users.getByEmail(email, tenantId);
 
     // 验证密码（使用统一错误消息防止用户枚举）
     const isPasswordValid = user ? await bcrypt.compare(password, user.password || '') : false;
@@ -39,8 +52,13 @@ export async function POST(req: Request) {
       return errorResponse('账号已被禁用，请联系管理员', 403);
     }
 
-    // 生成 JWT token
-    const token = await createToken({ id: user.id, email: user.email, role: user.role });
+    // 生成 JWT token（包含 tenantId）
+    const token = await createToken({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      tenantId,
+    });
 
     // 更新最后登录信息
     await db.users.updateLastLogin(user.id);

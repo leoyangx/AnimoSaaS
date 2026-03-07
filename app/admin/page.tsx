@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { getTenantId } from '@/lib/tenant-context';
 import AdminSidebar from './AdminSidebar';
 import AdminDashboard from './AdminDashboard';
 
@@ -8,12 +9,13 @@ export default async function AdminHomePage() {
   const session = await getSession('admin');
   if (!session || (session as any).role !== 'admin') redirect('/admin/login');
 
-  const users = await db.users.getAll();
-  const assets = await db.assets.getAll();
-  const codes = await db.codes.getAll();
-  const config = await db.config.get();
-  const logs = await db.logs.getAll(10);
-  const downloadLogs = await db.assets.getDownloadLogs(7);
+  const tenantId = await getTenantId();
+  const users = await db.users.getAll(tenantId);
+  const assets = await db.assets.getAll(tenantId);
+  const codes = await db.codes.getAll(tenantId);
+  const config = await db.config.get(tenantId);
+  const logs = await db.logs.getAll(tenantId, 10);
+  const downloadLogs = await db.assets.getDownloadLogs(tenantId, 7);
 
   // Calculate actual total downloads
   const totalDownloads = assets.reduce((sum, asset) => sum + (asset.downloadCount || 0), 0);

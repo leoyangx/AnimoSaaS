@@ -4,6 +4,9 @@ import { createToken } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { registerSchema } from '@/lib/validators';
 import { errorResponse, successResponse, validationErrorResponse } from '@/lib/api-response';
+import { getTenantIdFromRequestSafe } from '@/lib/tenant-context';
+import { getTenantBySlug } from '@/lib/tenant';
+import { checkQuota, incrementQuota } from '@/lib/quota';
 import bcrypt from 'bcryptjs';
 
 export async function POST(req: Request) {
@@ -12,6 +15,16 @@ export async function POST(req: Request) {
     const ip = getClientIp(req);
     const rateLimitError = checkRateLimit(ip, 'auth');
     if (rateLimitError) return rateLimitError;
+
+    // 获取租户 ID
+    let tenantId = getTenantIdFromRequestSafe(req);
+    if (!tenantId) {
+      const defaultTenant = await getTenantBySlug('default');
+      if (!defaultTenant) {
+        return errorResponse('系统未初始化', 503);
+      }
+      tenantId = defaultTenant.id;
+    }
 
     // 解析请求体
     const body = await req.json();
@@ -24,14 +37,20 @@ export async function POST(req: Request) {
 
     const { email, password, invitationCode } = validationResult.data;
 
+    // 配额检查
+    const quotaCheck = await checkQuota(tenantId, 'users');
+    if (!quotaCheck.allowed) {
+      return errorResponse(quotaCheck.message || '用户数已达上限', 403);
+    }
+
     // 验证邀请码
-    const code = await db.codes.getByCode(invitationCode);
+    const code = await db.codes.getByCode(invitationCode, tenantId);
     if (!code || code.status !== 'unused') {
       return errorResponse('邀请码无效或已被使用', 400);
     }
 
     // 检查邮箱是否已注册
-    const existingUser = await db.users.getByEmail(email);
+    const existingUser = await db.users.getByEmail(email, tenantId);
     if (existingUser) {
       return errorResponse('该邮箱已被注册', 400);
     }
@@ -40,7 +59,7 @@ export async function POST(req: Request) {
     const hashedPassword = await bcrypt.hash(password, 12);
 
     // 创建用户
-    const newUser = await db.users.create({
+    const newUser = await db.users.create(tenantId, {
       email,
       password: hashedPassword,
       role: 'student',
@@ -50,17 +69,21 @@ export async function POST(req: Request) {
       return errorResponse('注册失败，请稍后重试', 500);
     }
 
+    // 更新配额
+    await incrementQuota(tenantId, 'users');
+
     // 标记邀请码为已使用
-    await db.codes.use(invitationCode, newUser.id);
+    await db.codes.use(invitationCode, tenantId, newUser.id);
 
     // 记录操作日志
-    await db.logs.create('USER_REGISTER', email, `新用户注册，使用邀请码: ${invitationCode}`);
+    await db.logs.create('USER_REGISTER', email, tenantId, `新用户注册，使用邀请码: ${invitationCode}`);
 
-    // 生成 JWT token
+    // 生成 JWT token（包含 tenantId）
     const token = await createToken({
       id: newUser.id,
       email: newUser.email,
       role: newUser.role,
+      tenantId,
     });
 
     // 设置 cookie

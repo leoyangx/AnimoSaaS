@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { getTenantIdFromRequest } from '@/lib/tenant-context';
+import { checkQuota, incrementQuota } from '@/lib/quota';
 import bcrypt from 'bcryptjs';
 
 export async function POST(req: Request) {
@@ -9,22 +11,32 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const tenantId = getTenantIdFromRequest(req);
   const { email, password } = await req.json();
 
-  const existingUser = await db.users.getByEmail(email);
+  // 配额检查
+  const quotaCheck = await checkQuota(tenantId, 'users');
+  if (!quotaCheck.allowed) {
+    return NextResponse.json({ error: quotaCheck.message }, { status: 403 });
+  }
+
+  const existingUser = await db.users.getByEmail(email, tenantId);
   if (existingUser) {
     return NextResponse.json({ error: '用户已存在' }, { status: 400 });
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
-  const user = await db.users.create({
+  const user = await db.users.create(tenantId, {
     email,
     password: hashedPassword,
     role: 'student',
   });
 
+  // 更新配额
+  await incrementQuota(tenantId, 'users');
+
   // Log action
-  await db.logs.create('CREATE_USER', (session as any).email, `手动创建学员: ${email}`);
+  await db.logs.create('CREATE_USER', (session as any).email, tenantId, `手动创建学员: ${email}`);
 
   return NextResponse.json({ success: true, user });
 }

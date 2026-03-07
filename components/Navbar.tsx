@@ -140,8 +140,8 @@ export function Navbar({ user, settings }: { user: any, settings: any }) {
                 <span className="text-sm font-black text-zinc-400 uppercase tracking-widest">{user.email.split('@')[0]}</span>
               </div>
               <button
-                onClick={() => {
-                  document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+                onClick={async () => {
+                  await fetch('/api/auth/logout', { method: 'POST' });
                   window.location.href = '/login';
                 }}
                 className="text-zinc-400 hover:text-red-400 transition-colors"

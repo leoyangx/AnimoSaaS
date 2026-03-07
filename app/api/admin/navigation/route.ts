@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { getTenantIdFromRequest } from '@/lib/tenant-context';
 import { navigationItemSchema } from '@/lib/validators';
 import { z } from 'zod';
 import { errorResponse, successResponse, validationErrorResponse } from '@/lib/api-response';
@@ -14,6 +15,7 @@ export async function POST(req: Request) {
       return errorResponse('未授权访问', 401);
     }
 
+    const tenantId = getTenantIdFromRequest(req);
     const body = await req.json();
 
     // 验证数据格式
@@ -31,7 +33,7 @@ export async function POST(req: Request) {
 
     // 更新导航配置
     await prisma.$transaction(async (tx) => {
-      await tx.topNav.deleteMany({});
+      await tx.topNav.deleteMany({ where: { tenantId } });
 
       for (let i = 0; i < validationResult.data.length; i++) {
         const { ...navItem } = validationResult.data[i];
@@ -39,6 +41,7 @@ export async function POST(req: Request) {
           data: {
             ...navItem,
             order: i,
+            tenantId,
           },
         });
       }
@@ -48,6 +51,7 @@ export async function POST(req: Request) {
     await db.logs.create(
       'UPDATE_NAVIGATION',
       (session as any).email,
+      tenantId,
       `更新导航配置，共 ${body.length} 项`
     );
 

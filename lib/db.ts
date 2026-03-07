@@ -1,61 +1,67 @@
 import { prisma } from './prisma';
 import { Asset, User, InvitationCode, SiteConfig } from './types';
+import { configCache, categoryCache } from './cache';
 
 export const db = {
   assets: {
-    getAll: async () => {
+    getAll: async (tenantId: string) => {
       try {
         return await prisma.asset.findMany({
+          where: { tenantId, deletedAt: null },
           orderBy: { createdAt: 'desc' },
-          include: { assetCategory: true }
+          include: { assetCategory: true },
         });
       } catch (e) {
         console.error('获取素材失败:', e);
         return [];
       }
     },
-    getById: async (id: string) => {
+    getById: async (id: string, tenantId?: string) => {
       try {
-        return await prisma.asset.findUnique({
-          where: { id },
-          include: { assetCategory: true }
+        return await prisma.asset.findFirst({
+          where: { id, ...(tenantId ? { tenantId } : {}) },
+          include: { assetCategory: true },
         });
       } catch (e) {
         console.error('获取单条素材失败:', e);
         return null;
       }
     },
-    search: async (query: string) => {
+    search: async (query: string, tenantId: string) => {
       try {
         return await prisma.asset.findMany({
           where: {
+            tenantId,
+            deletedAt: null,
             OR: [
               { title: { contains: query, mode: 'insensitive' } },
               { description: { contains: query, mode: 'insensitive' } },
             ],
           },
-          include: { assetCategory: true }
+          include: { assetCategory: true },
         });
       } catch (e) {
         console.error('搜索素材失败:', e);
         return [];
       }
     },
-    filter: async (categoryId?: string, tag?: string) => {
+    filter: async (tenantId: string, categoryId?: string, tag?: string) => {
       try {
         return await prisma.asset.findMany({
           where: {
-            categoryId: (categoryId === 'all' || !categoryId) ? undefined : categoryId,
-            tags: (tag === 'all' || !tag) ? undefined : { has: tag },
+            tenantId,
+            deletedAt: null,
+            categoryId: categoryId === 'all' || !categoryId ? undefined : categoryId,
+            tags: tag === 'all' || !tag ? undefined : { has: tag },
           },
-          include: { assetCategory: true }
+          include: { assetCategory: true },
         });
       } catch (e) {
         console.error('筛选素材失败:', e);
         return [];
       }
     },
-    incrementDownload: async (id: string, userId?: string) => {
+    incrementDownload: async (id: string, tenantId: string, userId?: string) => {
       try {
         await prisma.asset.update({
           where: { id },
@@ -64,120 +70,134 @@ export const db = {
         await prisma.downloadLog.create({
           data: {
             assetId: id,
-            userId: userId || null
-          }
+            userId: userId || null,
+            tenantId,
+          },
         });
       } catch (e) {
         console.error('记录下载失败:', e);
       }
     },
-    getDownloadLogs: async (days: number = 7) => {
+    getDownloadLogs: async (tenantId: string, days: number = 7) => {
       const date = new Date();
       date.setDate(date.getDate() - days);
       try {
         return await prisma.downloadLog.findMany({
-          where: { createdAt: { gte: date } },
+          where: { tenantId, createdAt: { gte: date } },
           orderBy: { createdAt: 'asc' },
-          include: { asset: true }
+          include: { asset: true },
         });
       } catch (e) {
         console.error('获取下载日志失败:', e);
         return [];
       }
     },
-    create: async (data: any) => {
-      return await prisma.asset.create({ data });
+    create: async (tenantId: string, data: any) => {
+      return await prisma.asset.create({ data: { ...data, tenantId } });
     },
     update: async (id: string, data: any) => {
       return await prisma.asset.update({ where: { id }, data });
     },
     delete: async (id: string) => {
       await prisma.asset.delete({ where: { id } });
-    }
+    },
   },
   categories: {
-    getAll: async () => {
+    getAll: async (tenantId: string) => {
       try {
         return await prisma.assetCategory.findMany({
+          where: { tenantId, deletedAt: null },
           orderBy: { order: 'asc' },
-          include: { children: true }
+          include: { children: true },
         });
       } catch (e) {
         console.error('获取分类失败:', e);
         return [];
       }
     },
-    getHierarchical: async () => {
-      try {
-        const all = await prisma.assetCategory.findMany({
-          orderBy: { order: 'asc' }
-        });
-        const buildTree = (parentId: string | null = null): any[] => {
-          return all
-            .filter(c => c.parentId === parentId)
-            .map(c => ({
-              ...c,
-              children: buildTree(c.id)
-            }));
-        };
-        return buildTree(null);
-      } catch (e) {
-        console.error('获取层级分类失败:', e);
-        return [];
-      }
+    getHierarchical: async (tenantId: string) => {
+      return categoryCache.getOrSet(`categories:tree:${tenantId}`, async () => {
+        try {
+          const all = await prisma.assetCategory.findMany({
+            where: { tenantId, deletedAt: null },
+            orderBy: { order: 'asc' },
+          });
+          const buildTree = (parentId: string | null = null): any[] => {
+            return all
+              .filter((c) => c.parentId === parentId)
+              .map((c) => ({
+                ...c,
+                children: buildTree(c.id),
+              }));
+          };
+          return buildTree(null);
+        } catch (e) {
+          console.error('获取层级分类失败:', e);
+          return [];
+        }
+      });
     },
-    create: async (data: any) => {
-      return await prisma.assetCategory.create({ data });
+    create: async (tenantId: string, data: any) => {
+      const result = await prisma.assetCategory.create({ data: { ...data, tenantId } });
+      categoryCache.deleteByPrefix(`categories:`);
+      return result;
     },
     update: async (id: string, data: any) => {
-      return await prisma.assetCategory.update({ where: { id }, data });
+      const result = await prisma.assetCategory.update({ where: { id }, data });
+      categoryCache.deleteByPrefix(`categories:`);
+      return result;
     },
     delete: async (id: string) => {
       await prisma.assetCategory.delete({ where: { id } });
-    }
+      categoryCache.deleteByPrefix(`categories:`);
+    },
   },
   navigation: {
-    getAll: async () => {
+    getAll: async (tenantId: string) => {
       try {
         return await prisma.topNav.findMany({
-          orderBy: { order: 'asc' }
+          where: { tenantId },
+          orderBy: { order: 'asc' },
         });
       } catch (e) {
         console.error('获取导航失败:', e);
         return [];
       }
     },
-    create: async (data: any) => {
-      return await prisma.topNav.create({ data });
+    create: async (tenantId: string, data: any) => {
+      return await prisma.topNav.create({ data: { ...data, tenantId } });
     },
     update: async (id: string, data: any) => {
       return await prisma.topNav.update({ where: { id }, data });
     },
     delete: async (id: string) => {
       await prisma.topNav.delete({ where: { id } });
-    }
+    },
   },
   users: {
-    getAll: async () => {
+    getAll: async (tenantId: string) => {
       try {
         return await prisma.user.findMany({
-          orderBy: { createdAt: 'desc' }
+          where: { tenantId, deletedAt: null },
+          orderBy: { createdAt: 'desc' },
         });
       } catch (e) {
         console.error('获取用户失败:', e);
         return [];
       }
     },
-    getByEmail: async (email: string) => {
+    getByEmail: async (email: string, tenantId: string) => {
       try {
-        return await prisma.user.findUnique({ where: { email } });
+        return await prisma.user.findUnique({
+          where: { tenantId_email: { tenantId, email } },
+        });
       } catch (e) {
         console.error('获取单条用户失败:', e);
         return null;
       }
     },
-    create: async (data: any) => {
-      return await prisma.user.create({ data });
+    create: async (tenantId: string, data: any) => {
+      return await prisma.user.create({ data: { ...data, tenantId } });
     },
     update: async (id: string, data: any) => {
       await prisma.user.update({ where: { id }, data });
@@ -185,109 +205,126 @@ export const db = {
     updateLastLogin: async (id: string) => {
       await prisma.user.update({
         where: { id },
-        data: { lastLogin: new Date() }
+        data: { lastLogin: new Date() },
       });
     },
     delete: async (id: string) => {
       await prisma.user.delete({ where: { id } });
-    }
+    },
   },
   codes: {
-    getAll: async () => {
+    getAll: async (tenantId: string) => {
       try {
-        return await prisma.invitationCode.findMany({ orderBy: { createdAt: 'desc' } });
+        return await prisma.invitationCode.findMany({
+          where: { tenantId },
+          orderBy: { createdAt: 'desc' },
+        });
       } catch (e) {
         console.error('获取邀请码失败:', e);
         return [];
       }
     },
-    getByCode: async (code: string) => {
+    getByCode: async (code: string, tenantId: string) => {
       try {
-        return await prisma.invitationCode.findUnique({ where: { code } });
+        return await prisma.invitationCode.findUnique({
+          where: { tenantId_code: { tenantId, code } },
+        });
       } catch (e) {
         console.error('获取单条邀请码失败:', e);
         return null;
       }
     },
-    use: async (code: string, userId: string) => {
+    use: async (code: string, tenantId: string, userId: string) => {
       await prisma.invitationCode.update({
-        where: { code },
+        where: { tenantId_code: { tenantId, code } },
         data: { status: 'used', usedBy: userId },
       });
     },
-    generate: async (count: number) => {
+    generate: async (tenantId: string, count: number) => {
       const crypto = require('crypto');
       const newCodes = Array.from({ length: count }).map(() => ({
         code: `ANIMO-${crypto.randomBytes(4).toString('hex').toUpperCase()}`,
         status: 'unused',
+        tenantId,
       }));
       await prisma.invitationCode.createMany({ data: newCodes });
     },
-    delete: async (code: string) => {
-      await prisma.invitationCode.delete({ where: { code } });
-    }
+    delete: async (code: string, tenantId: string) => {
+      await prisma.invitationCode.delete({
+        where: { tenantId_code: { tenantId, code } },
+      });
+    },
   },
   config: {
-    get: async () => {
-      try {
-        let config = await prisma.siteConfig.findFirst();
-        if (!config) {
-          config = await prisma.siteConfig.create({ data: {} });
+    get: async (tenantId: string) => {
+      return configCache.getOrSet(`config:${tenantId}`, async () => {
+        try {
+          let config = await prisma.siteConfig.findUnique({
+            where: { tenantId },
+          });
+          if (!config) {
+            config = await prisma.siteConfig.create({ data: { tenantId } });
+          }
+          return config;
+        } catch (e) {
+          console.error('获取系统配置失败:', e);
+          return {
+            title: 'AnimoSaaS',
+            slogan: '为创作者而生，构建您的私域素材资产',
+            logo: '',
+            footer: '© 2026 AnimoSaaS. All Rights Reserved.',
+            themeColor: '#00FF00',
+            watermark: 'ANIMOSAAS',
+            emailVerificationEnabled: false,
+            alistUrl: '',
+            alistToken: '',
+            alistRoot: '/',
+            pan123Token: '',
+            pan123Root: '/',
+            juheUrl: '',
+            juheToken: '',
+          } as unknown as SiteConfig;
         }
-        return config;
-      } catch (e) {
-        console.error('获取系统配置失败:', e);
-        return {
-          title: 'AnimoSaaS',
-          slogan: '为创作者而生，构建您的私域素材资产',
-          logo: '',
-          footer: '© 2026 AnimoSaaS. All Rights Reserved.',
-          themeColor: '#00FF00',
-          watermark: 'ANIMOSAAS',
-          emailVerificationEnabled: false,
-          alistUrl: '',
-          alistToken: '',
-          alistRoot: '/',
-          pan123Token: '',
-          pan123Root: '/',
-          juheUrl: '',
-          juheToken: ''
-        } as unknown as SiteConfig;
-      }
+      });
     },
-    update: async (data: any) => {
-      const config = await prisma.siteConfig.findFirst();
+    update: async (tenantId: string, data: any) => {
+      const config = await prisma.siteConfig.findUnique({
+        where: { tenantId },
+      });
       if (config) {
-        const { id, createdAt, updatedAt, ...updateData } = data;
+        const { id, createdAt, updatedAt, tenantId: _tid, ...updateData } = data;
         await prisma.siteConfig.update({
-          where: { id: config.id },
+          where: { tenantId },
           data: updateData,
         });
       } else {
-        await prisma.siteConfig.create({ data });
+        await prisma.siteConfig.create({ data: { ...data, tenantId } });
       }
-    }
+      // 失效配置缓存
+      configCache.delete(`config:${tenantId}`);
+    },
   },
   logs: {
-    getAll: async (limit: number = 50) => {
+    getAll: async (tenantId: string, limit: number = 50) => {
       try {
         return await prisma.adminLog.findMany({
+          where: { tenantId },
           orderBy: { createdAt: 'desc' },
-          take: limit
+          take: limit,
         });
       } catch (e) {
         console.error('获取日志失败:', e);
         return [];
       }
     },
-    create: async (action: string, adminEmail: string, details?: string) => {
+    create: async (action: string, adminEmail: string, tenantId: string, details?: string) => {
       try {
         await prisma.adminLog.create({
-          data: { action, adminEmail, details }
+          data: { action, adminEmail, tenantId, details },
         });
       } catch (e) {
         console.error('记录日志失败:', e);
       }
-    }
-  }
+    },
+  },
 };

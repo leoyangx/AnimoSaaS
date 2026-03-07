@@ -1,3 +1,72 @@
+// ==================== 租户类型 ====================
+
+export interface Tenant {
+  id: string;
+  name: string;
+  slug: string;
+  plan: 'free' | 'pro' | 'enterprise';
+  status: 'active' | 'suspended' | 'deleted';
+  domain?: string | null;
+  settings: string; // JSON
+  createdAt: string | Date;
+  updatedAt?: string | Date;
+}
+
+export interface TenantQuota {
+  id: string;
+  tenantId: string;
+  maxUsers: number;
+  maxStorage: bigint | number;
+  maxAssets: number;
+  usedStorage: bigint | number;
+  usedAssets: number;
+  usedUsers: number;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+}
+
+export interface SuperAdmin {
+  id: string;
+  email: string;
+  password?: string;
+  name?: string | null;
+  lastLogin?: string | Date | null;
+  createdAt: string | Date;
+  updatedAt?: string | Date;
+}
+
+// ==================== API 密钥类型 ====================
+
+export interface ApiKeyInfo {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  permissions: string[];
+  tenantId: string;
+  createdById?: string | null;
+  lastUsedAt?: string | Date | null;
+  expiresAt?: string | Date | null;
+  isActive: boolean;
+  createdAt: string | Date;
+  updatedAt?: string | Date;
+}
+
+// ==================== 权限类型 ====================
+
+export interface Permission {
+  id: string;
+  name: string;
+  scope: 'tenant' | 'global';
+  description?: string | null;
+}
+
+export interface RolePermission {
+  id: string;
+  role: string;
+  permissionId: string;
+  permission?: Permission;
+}
+
 // ==================== 分页类型 ====================
 
 export interface PaginationParams {
@@ -23,6 +92,13 @@ export interface SessionPayload {
   id: string;
   email: string;
   role: 'USER' | 'ADMIN' | 'student';
+  tenantId?: string;
+}
+
+export interface SuperAdminSessionPayload {
+  id: string;
+  email: string;
+  role: 'superadmin';
 }
 
 // ==================== API 响应类型 ====================
@@ -57,6 +133,8 @@ export interface Asset {
   storageProvider: string;
   isDirectDownload?: boolean;
   downloadCount: number;
+  fileSize?: bigint | number;
+  tenantId?: string;
   deletedAt?: string | Date | null;
   createdAt: string | Date;
   updatedAt?: string | Date;
@@ -71,6 +149,7 @@ export interface AssetCategory {
   order: number;
   status: string;
   icon?: string | null;
+  tenantId?: string;
   deletedAt?: string | Date | null;
   createdAt?: string | Date;
   updatedAt?: string | Date;
@@ -86,6 +165,7 @@ export interface TopNav {
   order: number;
   status: 'active' | 'hidden';
   icon?: string | null;
+  tenantId?: string;
 }
 
 // ==================== 用户类型 ====================
@@ -99,6 +179,7 @@ export interface User {
   lastLogin?: string | Date | null;
   ip?: string | null;
   city?: string | null;
+  tenantId?: string;
   deletedAt?: string | Date | null;
   createdAt: string | Date;
   updatedAt?: string | Date;
@@ -111,6 +192,7 @@ export interface InvitationCode {
   code: string;
   status: string;
   usedBy?: string | null;
+  tenantId?: string;
   createdAt: string | Date;
 }
 
@@ -120,6 +202,7 @@ export interface DownloadLog {
   id: string;
   assetId: string;
   userId?: string | null;
+  tenantId?: string;
   createdAt: string | Date;
 }
 
@@ -130,6 +213,7 @@ export interface AdminLog {
   action: string;
   adminEmail: string;
   details?: string | null;
+  tenantId?: string;
   createdAt: string | Date;
 }
 
@@ -167,6 +251,8 @@ export interface SiteConfig {
 
   primaryColor?: string | null;
   secondaryColor?: string | null;
+
+  tenantId?: string;
 
   createdAt?: string | Date;
   updatedAt?: string | Date;

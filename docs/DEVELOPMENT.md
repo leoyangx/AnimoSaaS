@@ -1,548 +1,206 @@
-# AnimoSaaS 开发指南
-
-## 项目概述
-
-AnimoSaaS 是一个开源的私域动画资产管理与分发系统，基于 Next.js 15 + React 19 + TypeScript + PostgreSQL 构建。
+# 开发指南
 
 ## 技术栈
 
-### 前端
-- **框架**: Next.js 15.1.7 (App Router)
-- **UI 库**: React 19.0.0
-- **语言**: TypeScript 5.7.3
-- **样式**: Tailwind CSS 4.0.8
-- **动画**: Motion (Framer) 12.4.7
-- **图标**: Lucide React 0.475.0
-- **主题**: next-themes 0.4.4
-
-### 后端
-- **运行时**: Node.js 20+
-- **数据库**: PostgreSQL 15
-- **ORM**: Prisma 6.4.1
-- **认证**: JWT + bcryptjs
-- **验证**: Zod 4.3.6
-
-### 开发工具
-- **代码规范**: ESLint + Prettier
-- **Git Hooks**: Husky + lint-staged
-- **类型检查**: TypeScript
+| 技术 | 版本 | 用途 |
+|------|------|------|
+| Next.js | 15 | App Router 全栈框架 |
+| React | 19 | UI 库 |
+| TypeScript | 5.7 | 类型安全 |
+| Tailwind CSS | 4 | 样式 |
+| Motion | 12 | 动画 |
+| Prisma | 6.4 | ORM |
+| PostgreSQL | 15 | 数据库 |
+| Zod | 4.3 | 运行时验证 |
+| Vitest | 4 | 单元测试 |
+| Playwright | - | E2E 测试 |
 
 ## 项目结构
 
 ```
-animosaas/
-├── app/                      # Next.js App Router
-│   ├── api/                  # API 路由
-│   │   ├── admin/           # 管理端点
-│   │   ├── auth/            # 认证端点
-│   │   └── ...
-│   ├── admin/               # 管理后台页面
-│   ├── login/               # 登录页面
-│   └── ...
-├── components/              # React 组件
-│   ├── ErrorBoundary.tsx   # 错误边界
-│   ├── Skeleton.tsx        # 骨架屏
-│   └── ...
-├── lib/                     # 工具库
-│   ├── auth.ts             # 认证工具
-│   ├── db.ts               # 数据库抽象层
-│   ├── validators.ts       # Zod 验证器
-│   ├── api-response.ts     # API 响应标准化
-│   ├── pagination.ts       # 分页工具
-│   ├── file-upload.ts      # 文件上传验证
-│   ├── image-processor.ts  # 图片处理
-│   ├── export.ts           # 数据导出
-│   └── ...
-├── prisma/                  # Prisma 配置
-│   └── schema.prisma       # 数据库 schema
-├── middleware.ts            # Next.js 中间件
+app/
+├── api/
+│   ├── v1/              # 开放 API（API Key 认证）
+│   │   ├── assets/      # 素材查询、详情、下载
+│   │   └── categories/  # 分类列表
+│   ├── admin/           # 管理后台 API（JWT 认证）
+│   │   ├── assets/      # 素材 CRUD
+│   │   ├── users/       # 用户管理
+│   │   ├── codes/       # 邀请码
+│   │   └── api-keys/    # API Key 管理
+│   ├── superadmin/      # 超级管理员 API（JWT 认证）
+│   │   ├── tenants/     # 租户 CRUD
+│   │   ├── monitoring/  # 系统监控
+│   │   └── alerts/      # 告警
+│   └── health/          # 健康检查
+├── admin/               # 管理后台页面
+├── superadmin/          # 超级管理员页面
+└── (前台页面)
+
+components/              # 通用 UI 组件
+├── Badge.tsx            # 状态徽章
+├── PageHeader.tsx       # 页头
+├── ConfirmDialog.tsx    # 确认弹窗 + useConfirm hook
+├── LoadingSpinner.tsx   # 加载动画
+├── EmptyState.tsx       # 空状态
+├── MobileSidebar.tsx    # 移动端侧边栏
+├── LazyCharts.tsx       # 图表懒加载
 └── ...
+
+hooks/
+└── useVirtualList.ts    # 虚拟滚动 / 无限滚动 / 懒加载 Hook
+
+lib/
+├── prisma.ts            # Prisma 客户端（单例）
+├── db.ts                # 数据库操作层（带缓存）
+├── auth.ts              # JWT 认证
+├── tenant.ts            # 租户识别（带内存缓存）
+├── tenant-context.ts    # 请求级租户上下文
+├── api-keys.ts          # API Key 生成、验证、权限检查
+├── cache.ts             # 通用内存缓存（LRU + 请求去重）
+├── logger.ts            # 结构化日志
+├── alerts.ts            # 告警规则引擎
+├── quota.ts             # 租户配额检查
+├── rate-limit.ts        # 速率限制
+├── storage.ts           # 存储引擎适配器
+├── api-response.ts      # 统一 API 响应格式
+├── types.ts             # 全局类型定义
+└── utils.ts             # 工具函数
+
+tests/
+├── lib/                 # 库函数单元测试
+├── api/                 # API 逻辑测试
+└── e2e/                 # E2E 测试
 ```
-
-## 开发环境设置
-
-### 1. 克隆仓库
-
-```bash
-git clone https://github.com/your-org/animosaas.git
-cd animosaas
-```
-
-### 2. 安装依赖
-
-```bash
-npm install
-```
-
-### 3. 配置环境变量
-
-```bash
-cp .env.example .env
-```
-
-编辑 `.env` 文件：
-
-```env
-# 数据库
-DATABASE_URL="postgresql://animosaas:animosaas_pass@localhost:5432/animosaas_db"
-
-# JWT 密钥（至少 32 个字符）
-JWT_SECRET="your-super-secret-jwt-key-at-least-32-characters-long"
-
-# 管理员密码（至少 12 位，包含大小写字母和数字）
-ADMIN_PASSWORD="SecurePassword123"
-
-# Node 环境
-NODE_ENV="development"
-
-# Cookie 安全（开发环境）
-DISABLE_SECURE_COOKIE="true"
-```
-
-### 4. 启动数据库
-
-使用 Docker Compose：
-
-```bash
-docker-compose up -d db
-```
-
-或使用本地 PostgreSQL。
-
-### 5. 运行数据库迁移
-
-```bash
-npx prisma migrate dev
-npx prisma generate
-```
-
-### 6. 启动开发服务器
-
-```bash
-npm run dev
-```
-
-访问 http://localhost:3000
-
-### 7. 初始化管理员
-
-访问 http://localhost:3000/api/init
 
 ## 开发工作流
 
-### 代码规范
+### 启动开发环境
 
 ```bash
-# 检查代码规范
-npm run lint
-
-# 自动修复
-npm run lint:fix
-
-# 格式化代码
-npm run format
-
-# 检查格式
-npm run format:check
-
-# 类型检查
-npm run type-check
-```
-
-### Git 提交
-
-项目配置了 Husky，提交前会自动：
-- 运行 ESLint 并自动修复
-- 运行 Prettier 格式化
-- 检查类型
-
-```bash
-git add .
-git commit -m "feat: 添加新功能"
+docker-compose up -d db   # 启动数据库
+npm run dev               # 启动开发服务器（热更新）
 ```
 
 ### 数据库操作
 
 ```bash
-# 创建迁移
-npx prisma migrate dev --name migration_name
-
-# 应用迁移
-npx prisma migrate deploy
-
-# 重置数据库（开发环境）
-npx prisma migrate reset
-
-# 打开 Prisma Studio
-npx prisma studio
-
-# 生成 Prisma Client
-npx prisma generate
+npx prisma migrate dev    # 创建和应用迁移
+npx prisma studio         # 可视化数据库管理
+npx prisma generate       # 重新生成 Prisma Client
+npx prisma db push        # 快速同步 schema（开发用）
 ```
 
-## API 开发
+### 代码规范
 
-### 创建新的 API 端点
+项目使用 ESLint + Prettier + Husky：
 
-1. **创建路由文件**
-
-```typescript
-// app/api/example/route.ts
-import { NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
-import { errorResponse, successResponse } from '@/lib/api-response';
-import { exampleSchema } from '@/lib/validators';
-
-export async function POST(req: Request) {
-  try {
-    // 验证认证
-    const session = await getSession('admin');
-    if (!session) {
-      return errorResponse('未授权访问', 401);
-    }
-
-    // 解析和验证请求体
-    const body = await req.json();
-    const validationResult = exampleSchema.safeParse(body);
-
-    if (!validationResult.success) {
-      return validationErrorResponse(validationResult.error);
-    }
-
-    // 业务逻辑
-    const data = validationResult.data;
-    // ... 处理数据
-
-    return successResponse(result, '操作成功');
-  } catch (error) {
-    console.error('Error:', error);
-    return errorResponse('操作失败', 500, error);
-  }
-}
+```bash
+npm run lint              # 运行 ESLint
+npx prettier --check .    # 检查格式
 ```
 
-2. **添加验证 schema**
+Git commit 时自动运行 lint-staged。
+
+### 测试
+
+```bash
+npm test                  # 运行所有单元测试
+npm run test:watch        # 监听模式
+npm run test:coverage     # 覆盖率报告
+npm run test:e2e          # Playwright E2E 测试
+```
+
+## 核心概念
+
+### 多租户隔离
+
+所有数据查询必须包含 `tenantId` 过滤：
 
 ```typescript
-// lib/validators.ts
-export const exampleSchema = z.object({
-  name: z.string().min(1, '名称不能为空'),
-  value: z.number().min(0, '值必须大于0'),
+// Server Component
+import { getTenantId } from '@/lib/tenant-context';
+
+const tenantId = await getTenantId();
+const assets = await db.assets.getAll(tenantId);
+
+// API Route
+import { getTenantIdFromRequest } from '@/lib/tenant-context';
+
+const tenantId = getTenantIdFromRequest(request);
+```
+
+### API Key 认证
+
+V1 API 使用 Bearer Token 认证：
+
+```typescript
+// 客户端请求
+fetch('/api/v1/assets', {
+  headers: { 'Authorization': 'Bearer ak_xxxxxxxx...' }
 });
+
+// 中间件自动注入以下 header
+// x-tenant-id, x-tenant-slug, x-api-key-id, x-api-key-permissions
 ```
-
-3. **测试 API**
-
-```bash
-curl -X POST http://localhost:3000/api/example \
-  -H "Content-Type: application/json" \
-  -d '{"name":"test","value":123}'
-```
-
-### API 响应格式
-
-所有 API 使用统一的响应格式：
-
-```typescript
-// 成功响应
-{
-  "success": true,
-  "data": { ... },
-  "message": "操作成功",
-  "timestamp": "2026-03-06T12:00:00.000Z"
-}
-
-// 错误响应
-{
-  "success": false,
-  "error": "错误消息",
-  "timestamp": "2026-03-06T12:00:00.000Z"
-}
-
-// 分页响应
-{
-  "success": true,
-  "data": [ ... ],
-  "pagination": {
-    "page": 1,
-    "limit": 20,
-    "total": 100,
-    "totalPages": 5,
-    "hasNext": true,
-    "hasPrev": false
-  },
-  "timestamp": "2026-03-06T12:00:00.000Z"
-}
-```
-
-## 组件开发
-
-### 创建新组件
-
-```typescript
-// components/Example.tsx
-'use client';
-
-import { useState } from 'react';
-
-interface ExampleProps {
-  title: string;
-  onAction?: () => void;
-}
-
-export function Example({ title, onAction }: ExampleProps) {
-  const [loading, setLoading] = useState(false);
-
-  return (
-    <div className="p-4 bg-zinc-900 rounded-lg">
-      <h2 className="text-xl font-bold">{title}</h2>
-      <button
-        onClick={onAction}
-        disabled={loading}
-        className="mt-4 px-4 py-2 bg-[var(--brand-primary)] text-black rounded"
-      >
-        {loading ? '处理中...' : '执行操作'}
-      </button>
-    </div>
-  );
-}
-```
-
-### 使用骨架屏
-
-```typescript
-import { Skeleton, AssetCardSkeleton } from '@/components/Skeleton';
-
-function MyComponent() {
-  const [loading, setLoading] = useState(true);
-
-  if (loading) {
-    return <AssetCardSkeleton />;
-  }
-
-  return <div>内容</div>;
-}
-```
-
-### 使用错误边界
-
-```typescript
-import { ErrorBoundary } from '@/components/ErrorBoundary';
-
-function App() {
-  return (
-    <ErrorBoundary>
-      <YourComponent />
-    </ErrorBoundary>
-  );
-}
-```
-
-## 数据库开发
-
-### 添加新模型
-
-1. **更新 schema**
-
-```prisma
-// prisma/schema.prisma
-model Example {
-  id        String   @id @default(cuid())
-  name      String
-  value     Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([name])
-}
-```
-
-2. **创建迁移**
-
-```bash
-npx prisma migrate dev --name add_example_model
-```
-
-3. **更新类型定义**
-
-```typescript
-// lib/types.ts
-export interface Example {
-  id: string;
-  name: string;
-  value: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
-```
-
-4. **添加数据库方法**
-
-```typescript
-// lib/db.ts
-export const db = {
-  // ... 现有方法
-  example: {
-    create: async (data: { name: string; value: number }) => {
-      return await prisma.example.create({ data });
-    },
-    getAll: async () => {
-      return await prisma.example.findMany();
-    },
-  },
-};
-```
-
-## 常见任务
-
-### 添加新的管理页面
-
-1. 创建页面文件：`app/admin/example/page.tsx`
-2. 添加到侧边栏：`app/admin/AdminSidebar.tsx`
-3. 创建 API 端点：`app/api/admin/example/route.ts`
-
-### 添加文件上传功能
-
-```typescript
-import { validateFile } from '@/lib/file-upload';
-import { processImage } from '@/lib/image-processor';
-
-// 验证文件
-const validation = validateFile(filename, mimetype, size);
-if (!validation.valid) {
-  return errorResponse(validation.error);
-}
-
-// 处理图片
-const processed = await processImage(buffer, {
-  width: 800,
-  quality: 80,
-  format: 'webp',
-});
-```
-
-### 导出数据
-
-```typescript
-import { exportToExcelBuffer } from '@/lib/export';
-
-const buffer = exportToExcelBuffer(data, 'Sheet1', [
-  { key: 'name', label: '名称' },
-  { key: 'value', label: '值' },
-]);
-
-return new NextResponse(buffer, {
-  headers: {
-    'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'Content-Disposition': 'attachment; filename="export.xlsx"',
-  },
-});
-```
-
-## 调试
-
-### 查看日志
-
-```bash
-# 开发服务器日志
-npm run dev
-
-# 数据库查询日志
-# 在 prisma/schema.prisma 中添加：
-# log = ["query", "info", "warn", "error"]
-```
-
-### 使用 Prisma Studio
-
-```bash
-npx prisma studio
-```
-
-### 调试 API
-
-使用 curl 或 Postman 测试 API：
-
-```bash
-# 测试登录
-curl -X POST http://localhost:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@example.com","password":"your-password"}'
-```
-
-## 性能优化
-
-### 数据库查询优化
-
-- 使用索引
-- 使用 `select` 只查询需要的字段
-- 使用 `include` 而不是多次查询
-- 使用分页
-
-### 图片优化
-
-- 使用 Sharp 压缩图片
-- 生成多种尺寸
-- 使用 WebP 格式
-- 使用 CDN
 
 ### 缓存策略
 
-- 使用 Next.js 缓存
-- 使用 Redis（可选）
-- 使用浏览器缓存
+`lib/cache.ts` 提供 `MemoryCache` 类：
 
-## 部署
+```typescript
+import { configCache } from '@/lib/cache';
 
-### 生产构建
+// 自动缓存 + 请求去重
+const config = await configCache.getOrSet(
+  `config:${tenantId}`,
+  () => prisma.siteConfig.findUnique({ where: { tenantId } }),
+  5 * 60 * 1000 // 5 分钟 TTL
+);
 
-```bash
-npm run build
-npm start
+// 写操作后失效缓存
+configCache.delete(`config:${tenantId}`);
 ```
 
-### Docker 部署
+### 日志
 
-```bash
-docker-compose up -d
+```typescript
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('my-module');
+log.info('操作完成', { userId, action });
+log.error('操作失败', { error: err.message });
 ```
 
-### 环境变量
+开发环境输出可读格式，生产环境输出 JSON。
 
-生产环境必须设置：
-- `JWT_SECRET` - 强随机字符串
-- `ADMIN_PASSWORD` - 强密码
-- `DISABLE_SECURE_COOKIE=false` - 启用安全 cookie
-- `DATABASE_URL` - 生产数据库连接
+### 统一 API 响应
 
-## 故障排除
+```typescript
+import { apiSuccess, apiError, apiPaginated } from '@/lib/api-response';
 
-### 常见问题
+// 成功
+return apiSuccess(data);
 
-1. **数据库连接失败**
-   - 检查 `DATABASE_URL`
-   - 确保数据库服务已启动
+// 分页
+return apiPaginated(items, { page, limit, total });
 
-2. **迁移失败**
-   - 运行 `npx prisma migrate reset`（开发环境）
-   - 检查 schema 语法
+// 错误
+return apiError('未找到', 404);
+```
 
-3. **依赖安装失败**
-   - 使用 `npm install --legacy-peer-deps`
-   - 清除缓存：`npm cache clean --force`
+## Next.js 15 注意事项
 
-## 资源
+- `params` 和 `searchParams` 是 `Promise` 类型，需要 `await`
+- Middleware 中使用 Prisma 需要 `export const runtime = 'nodejs'`
+- App Router 不支持传统的 `getServerSideProps`
 
-- [Next.js 文档](https://nextjs.org/docs)
-- [Prisma 文档](https://www.prisma.io/docs)
-- [Zod 文档](https://zod.dev)
-- [Tailwind CSS 文档](https://tailwindcss.com/docs)
+## 添加新功能的流程
 
-## 获取帮助
-
-- GitHub Issues
-- 开发者邮件列表
-- 社区论坛
-
----
-
-祝开发愉快！🚀
+1. 在 `prisma/schema.prisma` 添加模型（如需要）
+2. 运行 `npx prisma migrate dev --name feature_name`
+3. 在 `lib/db.ts` 添加数据库操作方法
+4. 在 `app/api/` 添加 API 路由
+5. 在 `app/` 添加页面
+6. 在 `tests/` 添加测试
+7. 确保所有查询包含 `tenantId` 过滤

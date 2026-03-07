@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { getTenantIdFromRequest } from '@/lib/tenant-context';
 
 export async function POST(req: Request) {
   const session = await getSession('admin');
@@ -8,11 +9,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const tenantId = getTenantIdFromRequest(req);
   const data = await req.json();
-  await db.config.update(data);
+  await db.config.update(tenantId, data);
 
   // Log action
-  await db.logs.create('UPDATE_SETTINGS', (session as any).email, `更新系统配置`);
+  await db.logs.create('UPDATE_SETTINGS', (session as any).email, tenantId, `更新系统配置`);
 
-  return NextResponse.json({ success: true, config: await db.config.get() });
+  return NextResponse.json({ success: true, config: await db.config.get(tenantId) });
 }

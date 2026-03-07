@@ -9,7 +9,6 @@ coverage
 .env.local
 .env.production
 .env.production.local
-package-lock.json
 pnpm-lock.yaml
 yarn.lock
 .git
@@ -19,7 +18,6 @@ yarn.lock
 .claude
 *.md
 !README.md
-scripts
 backups
 logs
 public/uploads/*

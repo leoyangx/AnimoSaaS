@@ -1,12 +1,14 @@
 import { Navbar } from '@/components/Navbar';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/auth';
+import { getTenantId } from '@/lib/tenant-context';
 import { Suspense } from 'react';
 
 export default async function AboutPage() {
   const session = await getSession();
-  const config = await db.config.get();
-  const navItems = await db.navigation.getAll();
+  const tenantId = await getTenantId();
+  const config = await db.config.get(tenantId);
+  const navItems = await db.navigation.getAll(tenantId);
 
   const settings = {
     system: {

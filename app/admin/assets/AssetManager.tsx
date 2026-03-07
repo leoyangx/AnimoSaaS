@@ -180,7 +180,8 @@ export default function AssetManager({
       </header>
 
       <div className="glass-card overflow-hidden">
-        <table className="w-full text-left border-collapse">
+        <div className="table-responsive">
+        <table className="w-full text-left border-collapse min-w-[700px]">
           <thead>
             <tr className="border-b border-white/10 bg-white/5">
               <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">
@@ -226,6 +227,8 @@ export default function AssetManager({
                               src={`/api/assets/${asset.id}/thumbnail`}
                               alt=""
                               fill
+                              sizes="64px"
+                              loading="lazy"
                               className="object-cover"
                               referrerPolicy="no-referrer"
                             />
@@ -300,6 +303,7 @@ export default function AssetManager({
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Modal */}
@@ -518,6 +522,7 @@ export default function AssetManager({
                               className="w-full h-full object-cover"
                               alt="Preview"
                               fill
+                              sizes="(max-width: 768px) 100vw, 50vw"
                               referrerPolicy="no-referrer"
                             />
                           ) : (

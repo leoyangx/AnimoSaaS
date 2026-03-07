@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getTenantIdFromRequestSafe } from '@/lib/tenant-context';
+import { getTenantBySlug } from '@/lib/tenant';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { errorResponse, successResponse } from '@/lib/api-response';
@@ -8,8 +10,18 @@ export async function GET(req: NextRequest) {
   console.log('GET /api/init hit');
 
   try {
+    // 获取租户 ID
+    let tenantId = getTenantIdFromRequestSafe(req);
+    if (!tenantId) {
+      const defaultTenant = await getTenantBySlug('default');
+      if (!defaultTenant) {
+        return errorResponse('系统未初始化，请先运行迁移脚本', 503);
+      }
+      tenantId = defaultTenant.id;
+    }
+
     const adminEmail = 'admin@example.com';
-    const existingAdmin = await db.users.getByEmail(adminEmail);
+    const existingAdmin = await db.users.getByEmail(adminEmail, tenantId);
 
     // If admin already exists, do nothing — no force reset allowed
     if (existingAdmin) {
@@ -49,7 +61,7 @@ export async function GET(req: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 12);
 
     console.log('Creating new admin user');
-    await db.users.create({
+    await db.users.create(tenantId, {
       email: adminEmail,
       password: hashedPassword,
       role: 'admin',

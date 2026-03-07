@@ -1,12 +1,22 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getTenantIdFromRequestSafe } from '@/lib/tenant-context';
+import { getTenantBySlug } from '@/lib/tenant';
 import { StorageEngine } from '@/lib/storage';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    let asset = await db.assets.getById(id);
-    const config = await db.config.get();
+
+    // 获取租户 ID
+    let tenantId = getTenantIdFromRequestSafe(request);
+    if (!tenantId) {
+      const defaultTenant = await getTenantBySlug('default');
+      tenantId = defaultTenant?.id || '';
+    }
+
+    let asset = await db.assets.getById(id, tenantId);
+    const config = await db.config.get(tenantId);
 
     // 如果数据库中找不到，且 ID 以 alist- 开头，说明是动态获取的 AList 素材
     if (!asset && id.startsWith('alist-')) {
@@ -48,7 +58,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     );
 
     // 后端代理请求，绕过防盗链
-    // 动态提取网盘域名的 origin 作为 Referer，确保兼容性
     const targetUrl = new URL(thumbnailUrl);
     const headers: Record<string, string> = {
       Referer: targetUrl.origin,

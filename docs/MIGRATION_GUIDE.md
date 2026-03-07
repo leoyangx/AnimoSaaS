@@ -1,140 +1,98 @@
 # 数据库迁移指南
 
-## 问题说明
+## 迁移工具
 
-数据库迁移失败是因为数据库连接配置不正确。这是正常的，因为需要先配置数据库连接。
+AnimoSaaS 使用 Prisma Migrate 管理数据库 schema。
 
-## 迁移步骤
-
-### 1. 配置数据库连接
-
-编辑 `.env` 文件，设置正确的数据库连接：
+## 开发环境
 
 ```bash
-# 如果使用 Docker Compose（推荐）
-DATABASE_URL="postgresql://animosaas:animosaas_pass@localhost:5432/animosaas_db"
+# 创建并应用新迁移
+npx prisma migrate dev --name migration_name
 
-# 或者使用你自己的 PostgreSQL
-DATABASE_URL="postgresql://username:password@localhost:5432/database_name"
-```
+# 快速同步（不创建迁移文件，仅开发用）
+npx prisma db push
 
-### 2. 启动数据库（如果使用 Docker）
-
-```bash
-docker-compose up -d db
-```
-
-### 3. 运行数据库迁移
-
-```bash
-npx prisma migrate dev --name add_indexes_and_soft_delete
-```
-
-这将：
-
-- 添加 9 个数据库索引
-- 添加 3 个软删除字段（deletedAt）
-- 不会删除任何现有数据
-
-### 4. 生成 Prisma Client
-
-```bash
-npx prisma generate
-```
-
-### 5. 验证迁移
-
-```bash
-npx prisma studio
-```
-
-这将打开 Prisma Studio，你可以查看数据库结构。
-
-## 如果数据库已有数据
-
-如果你的数据库已经有数据，迁移是安全的：
-
-- 新增的索引不会影响现有数据
-- `deletedAt` 字段默认为 NULL，不影响现有记录
-- 所有现有功能保持正常工作
-
-## 回滚迁移（如果需要）
-
-```bash
+# 重置数据库（删除所有数据）
 npx prisma migrate reset
 ```
 
-⚠️ 警告：这将删除所有数据！仅在开发环境使用。
-
-## 手动迁移（可选）
-
-如果自动迁移失败，可以手动执行 SQL：
-
-```sql
--- 添加软删除字段
-ALTER TABLE "Asset" ADD COLUMN "deletedAt" TIMESTAMP(3);
-ALTER TABLE "User" ADD COLUMN "deletedAt" TIMESTAMP(3);
-ALTER TABLE "AssetCategory" ADD COLUMN "deletedAt" TIMESTAMP(3);
-
--- 添加索引
-CREATE INDEX "User_role_idx" ON "User"("role");
-CREATE INDEX "User_disabled_idx" ON "User"("disabled");
-CREATE INDEX "User_createdAt_idx" ON "User"("createdAt");
-CREATE INDEX "User_deletedAt_idx" ON "User"("deletedAt");
-
-CREATE INDEX "Asset_categoryId_idx" ON "Asset"("categoryId");
-CREATE INDEX "Asset_createdAt_idx" ON "Asset"("createdAt");
-CREATE INDEX "Asset_downloadCount_idx" ON "Asset"("downloadCount");
-CREATE INDEX "Asset_title_idx" ON "Asset"("title");
-CREATE INDEX "Asset_deletedAt_idx" ON "Asset"("deletedAt");
-
-CREATE INDEX "AssetCategory_parentId_idx" ON "AssetCategory"("parentId");
-CREATE INDEX "AssetCategory_status_idx" ON "AssetCategory"("status");
-CREATE INDEX "AssetCategory_deletedAt_idx" ON "AssetCategory"("deletedAt");
-
-CREATE INDEX "DownloadLog_assetId_idx" ON "DownloadLog"("assetId");
-CREATE INDEX "DownloadLog_userId_idx" ON "DownloadLog"("userId");
-CREATE INDEX "DownloadLog_createdAt_idx" ON "DownloadLog"("createdAt");
-
-CREATE INDEX "InvitationCode_status_idx" ON "InvitationCode"("status");
-CREATE INDEX "InvitationCode_createdAt_idx" ON "InvitationCode"("createdAt");
-
-CREATE INDEX "AdminLog_adminEmail_idx" ON "AdminLog"("adminEmail");
-CREATE INDEX "AdminLog_createdAt_idx" ON "AdminLog"("createdAt");
-CREATE INDEX "AdminLog_action_idx" ON "AdminLog"("action");
-```
-
-## 验证升级
-
-运行以下命令验证所有依赖已安装：
+## 生产环境
 
 ```bash
-npm list zod sharp
+# 应用所有待执行的迁移
+npx prisma migrate deploy
 ```
 
-应该看到：
+Docker 容器启动时自动执行 `prisma migrate deploy`。
 
-- zod@3.x.x
-- sharp@0.34.x
+## 多租户初始化
+
+首次部署或迁移后，运行初始化脚本：
+
+```bash
+npx tsx scripts/init-multi-tenant.ts
+```
+
+该脚本幂等执行以下操作：
+1. 创建默认租户（slug: `default`）
+2. 创建超级管理员（使用 `.env` 中的 `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD`）
+3. 创建默认租户的配额记录
+4. 创建默认站点配置
+
+## 数据库模型
+
+AnimoSaaS v3.0 包含 18 个数据库模型：
+
+| 模型 | 说明 |
+|------|------|
+| `Tenant` | 租户 |
+| `TenantQuota` | 租户配额 |
+| `SuperAdmin` | 超级管理员 |
+| `ApiKey` | API 密钥 |
+| `Permission` | 权限定义 |
+| `RolePermission` | 角色权限关联 |
+| `SystemSettings` | 系统设置 |
+| `StorageSettings` | 存储设置 |
+| `SecuritySettings` | 安全设置 |
+| `Navigation` | 导航配置 |
+| `TopNav` | 顶部导航 |
+| `AssetCategory` | 素材分类 |
+| `Asset` | 素材 |
+| `DownloadLog` | 下载日志 |
+| `User` | 用户 |
+| `InvitationCode` | 邀请码 |
+| `SiteConfig` | 站点配置 |
+| `AdminLog` | 管理日志 |
+
+所有业务数据模型通过 `tenantId` 字段实现租户隔离。
 
 ## 常见问题
 
-### Q: 迁移时提示 "P1000: Authentication failed"
+### 迁移失败
 
-A: 检查 DATABASE_URL 是否正确，确保数据库服务已启动。
+```bash
+# 查看迁移状态
+npx prisma migrate status
 
-### Q: 迁移时提示 "P3009: migrate found failed migrations"
+# 如果有未解决的迁移，标记为已应用
+npx prisma migrate resolve --applied migration_name
+```
 
-A: 运行 `npx prisma migrate resolve --applied <migration_name>` 标记为已应用。
+### Schema 与数据库不一致
 
-### Q: 如何查看当前迁移状态？
+```bash
+# 使用 db push 强制同步（仅开发环境）
+npx prisma db push --force-reset
 
-A: 运行 `npx prisma migrate status`
+# 或创建新迁移修复差异
+npx prisma migrate dev
+```
 
-## 下一步
+### 连接池优化
 
-迁移完成后，继续执行：
+在 `DATABASE_URL` 中添加连接池参数：
 
-1. 初始化管理员账号：访问 `http://localhost:3000/api/init`
-2. 启动开发服务器：`npm run dev`
-3. 测试所有功能
+```env
+DATABASE_URL="postgresql://user:pass@host:5432/db?connection_limit=10&pool_timeout=30"
+```

@@ -3,6 +3,8 @@ import { Inter, Space_Grotesk, JetBrains_Mono } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { db } from '@/lib/db';
+import { getTenantIdSafe } from '@/lib/tenant-context';
+import { getTenantBySlug } from '@/lib/tenant';
 import './globals.css';
 
 const inter = Inter({
@@ -21,7 +23,18 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const config = await db.config.get();
+  let tenantId = await getTenantIdSafe();
+  if (!tenantId) {
+    const defaultTenant = await getTenantBySlug('default');
+    tenantId = defaultTenant?.id || '';
+  }
+  if (!tenantId) {
+    return {
+      title: 'AnimoSaaS - 私域动画素材管理系统',
+      description: '专业的高质量动画素材分发系统。',
+    };
+  }
+  const config = await db.config.get(tenantId);
   return {
     title: {
       template: `%s | ${config.title || 'AnimoSaaS'}`,
@@ -32,8 +45,13 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const config = await db.config.get();
-  const primaryColor = config.themeColor || '#00ff88';
+  let tenantId = await getTenantIdSafe();
+  if (!tenantId) {
+    const defaultTenant = await getTenantBySlug('default');
+    tenantId = defaultTenant?.id || '';
+  }
+  const config = tenantId ? await db.config.get(tenantId) : null;
+  const primaryColor = config?.themeColor || '#00ff88';
 
   return (
     <html lang="zh-CN" suppressHydrationWarning>

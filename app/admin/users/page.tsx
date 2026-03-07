@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { getTenantId } from '@/lib/tenant-context';
 import AdminSidebar from '../AdminSidebar';
 import { Search } from 'lucide-react';
 import { UserTable } from './UserTable';
@@ -10,7 +11,8 @@ export default async function AdminUsersPage() {
   const session = await getSession('admin');
   if (!session || (session as any).role !== 'admin') redirect('/admin/login');
 
-  const allUsers = await db.users.getAll();
+  const tenantId = await getTenantId();
+  const allUsers = await db.users.getAll(tenantId);
   const users = allUsers.filter((u: User) => u.role === 'student');
 
   return (

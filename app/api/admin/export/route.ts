@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getTenantIdFromRequest } from '@/lib/tenant-context';
 import { errorResponse } from '@/lib/api-response';
 import {
   exportToExcelBuffer,
@@ -17,18 +18,18 @@ export async function GET(req: Request) {
       return errorResponse('未授权访问', 401);
     }
 
+    const tenantId = getTenantIdFromRequest(req);
     const { searchParams } = new URL(req.url);
     const type = searchParams.get('type'); // assets, users, logs, downloads
     const format = searchParams.get('format') || 'xlsx'; // xlsx, csv
 
     let data: any[] = [];
     let filename = '';
-    let columns: any[] = [];
 
     switch (type) {
       case 'assets':
         const assets = await prisma.asset.findMany({
-          where: { deletedAt: null },
+          where: { tenantId, deletedAt: null },
           include: { assetCategory: true },
           orderBy: { createdAt: 'desc' },
         });
@@ -48,7 +49,7 @@ export async function GET(req: Request) {
 
       case 'users':
         const users = await prisma.user.findMany({
-          where: { deletedAt: null },
+          where: { tenantId, deletedAt: null },
           orderBy: { createdAt: 'desc' },
         });
 
@@ -67,6 +68,7 @@ export async function GET(req: Request) {
 
       case 'logs':
         const logs = await prisma.adminLog.findMany({
+          where: { tenantId },
           orderBy: { createdAt: 'desc' },
           take: 1000, // 限制最近1000条
         });
@@ -83,6 +85,7 @@ export async function GET(req: Request) {
 
       case 'downloads':
         const downloads = await prisma.downloadLog.findMany({
+          where: { tenantId },
           include: { asset: true },
           orderBy: { createdAt: 'desc' },
           take: 5000, // 限制最近5000条
@@ -99,6 +102,7 @@ export async function GET(req: Request) {
 
       case 'codes':
         const codes = await prisma.invitationCode.findMany({
+          where: { tenantId },
           orderBy: { createdAt: 'desc' },
         });
 

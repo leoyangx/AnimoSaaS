@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { db } from '@/lib/db';
+import { getTenantIdFromRequest } from '@/lib/tenant-context';
 import { errorResponse, successResponse } from '@/lib/api-response';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -12,14 +13,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const { id } = await params;
+    const tenantId = getTenantIdFromRequest(req);
 
     // 恢复资产
     const asset = await prisma.asset.update({
-      where: { id, deletedAt: { not: null } },
+      where: { id, tenantId, deletedAt: { not: null } },
       data: { deletedAt: null },
     });
 
-    await db.logs.create('RESTORE_ASSET', (session as any).email, `恢复资产: ${asset.title}`);
+    await db.logs.create('RESTORE_ASSET', (session as any).email, tenantId, `恢复资产: ${asset.title}`);
 
     return successResponse(asset, '资产恢复成功');
   } catch (error) {

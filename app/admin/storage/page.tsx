@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { getTenantId } from '@/lib/tenant-context';
 import AdminSidebar from '../AdminSidebar';
 import { StorageForm } from './StorageForm';
 
@@ -8,7 +9,8 @@ export default async function StorageSettingsPage() {
   const session = await getSession('admin');
   if (!session || (session as any).role !== 'admin') redirect('/admin/login');
 
-  const config = await db.config.get();
+  const tenantId = await getTenantId();
+  const config = await db.config.get(tenantId);
 
   return (
     <div className="min-h-screen bg-bg-dark flex">

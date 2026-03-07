@@ -44,6 +44,12 @@ const MENU_GROUPS = [
     ],
   },
   {
+    label: '开发者',
+    items: [
+      { name: 'API 密钥', icon: Key, href: '/admin/api-keys' },
+    ],
+  },
+  {
     label: '系统配置',
     items: [
       { name: '品牌与视觉', icon: Palette, href: '/admin/settings' },
@@ -57,7 +63,7 @@ export default function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-72 glass-panel border-r border-white/5 flex flex-col h-screen sticky top-0 z-50">
+    <aside className="w-72 glass-panel border-r border-white/5 flex flex-col h-screen sticky top-0 z-50 shrink-0">
       <div className="p-8 border-b border-white/5">
         <Link href="/" className="flex items-center gap-3 group">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-primary to-emerald-400 flex items-center justify-center font-black text-black text-xl shadow-lg shadow-brand-primary/20 group-hover:scale-110 transition-transform duration-500">

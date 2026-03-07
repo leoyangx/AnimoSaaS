@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { db } from '@/lib/db';
+import { getTenantIdFromRequest } from '@/lib/tenant-context';
 import { errorResponse, successResponse } from '@/lib/api-response';
 import { z } from 'zod';
 
@@ -20,6 +21,7 @@ export async function POST(req: Request) {
       return errorResponse('未授权访问', 401);
     }
 
+    const tenantId = getTenantIdFromRequest(req);
     const body = await req.json();
     const validationResult = batchOperationSchema.safeParse(body);
 
@@ -36,13 +38,14 @@ export async function POST(req: Request) {
       case 'delete':
         // 软删除
         result = await prisma.asset.updateMany({
-          where: { id: { in: assetIds } },
+          where: { id: { in: assetIds }, tenantId },
           data: { deletedAt: new Date() },
         });
         message = `成功删除 ${result.count} 个资产`;
         await db.logs.create(
           'BATCH_DELETE_ASSETS',
           (session as any).email,
+          tenantId,
           `批量删除 ${result.count} 个资产`
         );
         break;
@@ -50,13 +53,14 @@ export async function POST(req: Request) {
       case 'restore':
         // 恢复软删除
         result = await prisma.asset.updateMany({
-          where: { id: { in: assetIds }, deletedAt: { not: null } },
+          where: { id: { in: assetIds }, tenantId, deletedAt: { not: null } },
           data: { deletedAt: null },
         });
         message = `成功恢复 ${result.count} 个资产`;
         await db.logs.create(
           'BATCH_RESTORE_ASSETS',
           (session as any).email,
+          tenantId,
           `批量恢复 ${result.count} 个资产`
         );
         break;
@@ -66,13 +70,14 @@ export async function POST(req: Request) {
           return errorResponse('请指定分类ID', 400);
         }
         result = await prisma.asset.updateMany({
-          where: { id: { in: assetIds } },
+          where: { id: { in: assetIds }, tenantId },
           data: { categoryId },
         });
         message = `成功更新 ${result.count} 个资产的分类`;
         await db.logs.create(
           'BATCH_UPDATE_CATEGORY',
           (session as any).email,
+          tenantId,
           `批量更新 ${result.count} 个资产的分类`
         );
         break;
@@ -83,7 +88,7 @@ export async function POST(req: Request) {
         }
         // 获取所有资产并添加标签
         const assetsToAddTags = await prisma.asset.findMany({
-          where: { id: { in: assetIds } },
+          where: { id: { in: assetIds }, tenantId },
           select: { id: true, tags: true },
         });
 
@@ -101,6 +106,7 @@ export async function POST(req: Request) {
         await db.logs.create(
           'BATCH_ADD_TAGS',
           (session as any).email,
+          tenantId,
           `批量添加标签: ${tags.join(', ')}`
         );
         result = { count: assetsToAddTags.length };
@@ -112,7 +118,7 @@ export async function POST(req: Request) {
         }
         // 获取所有资产并移除标签
         const assetsToRemoveTags = await prisma.asset.findMany({
-          where: { id: { in: assetIds } },
+          where: { id: { in: assetIds }, tenantId },
           select: { id: true, tags: true },
         });
 
@@ -130,6 +136,7 @@ export async function POST(req: Request) {
         await db.logs.create(
           'BATCH_REMOVE_TAGS',
           (session as any).email,
+          tenantId,
           `批量移除标签: ${tags.join(', ')}`
         );
         result = { count: assetsToRemoveTags.length };

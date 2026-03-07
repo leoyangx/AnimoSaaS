@@ -1,0 +1,96 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: animosaas
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: animosaas_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 安装 Playwright 浏览器
+        run: npx playwright install --with-deps chromium
+
+      - name: 生成 Prisma Client
+        run: npx prisma generate
+
+      - name: 初始化数据库
+        run: npx prisma db push
+        env:
+          DATABASE_URL: postgresql://animosaas:test_password@localhost:5432/animosaas_test
+
+      - name: 初始化多租户数据
+        run: npx tsx scripts/migrate-to-multitenant.ts
+        env:
+          DATABASE_URL: postgresql://animosaas:test_password@localhost:5432/animosaas_test
+          DEFAULT_TENANT_NAME: Default
+          SUPER_ADMIN_EMAIL: superadmin@test.com
+          SUPER_ADMIN_PASSWORD: TestAdmin123!
+          JWT_SECRET: e2e-test-jwt-secret-at-least-32-characters-long
+
+      - name: 构建应用
+        run: npm run build
+        env:
+          DATABASE_URL: postgresql://animosaas:test_password@localhost:5432/animosaas_test
+          JWT_SECRET: e2e-test-jwt-secret-at-least-32-characters-long
+          TENANT_MODE: path
+
+      - name: 运行 E2E 测试
+        run: npx playwright test
+        env:
+          DATABASE_URL: postgresql://animosaas:test_password@localhost:5432/animosaas_test
+          JWT_SECRET: e2e-test-jwt-secret-at-least-32-characters-long
+          TENANT_MODE: path
+          ADMIN_PASSWORD: TestAdmin123!
+          DISABLE_SECURE_COOKIE: true
+          BASE_URL: http://localhost:3000
+
+      - name: 上传测试报告
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+      - name: 上传测试截图
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-screenshots
+          path: test-results/
+          retention-days: 7

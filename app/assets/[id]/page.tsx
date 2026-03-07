@@ -2,17 +2,20 @@ import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/auth';
+import { getTenantId } from '@/lib/tenant-context';
 import { Navbar } from '@/components/Navbar';
 import { Package, Download, Eye, Clock, Hash, AlertTriangle, FileText } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { formatDate } from '@/lib/utils';
 import { StorageEngine } from '@/lib/storage';
 
 export default async function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
     const session = await getSession();
-    const config = await db.config.get();
-    const navItems = await db.navigation.getAll();
+    const tenantId = await getTenantId();
+    const config = await db.config.get(tenantId);
+    const navItems = await db.navigation.getAll(tenantId);
 
     const settings = {
         system: {
@@ -24,7 +27,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
         navigation: navItems.filter((n) => n.status === 'active')
     };
 
-    const asset = await db.assets.getById(id);
+    const asset = await db.assets.getById(id, tenantId);
     if (!asset) {
         notFound();
     }
@@ -49,10 +52,13 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
                     <div className="lg:col-span-2 space-y-8">
                         <div className="aspect-video glass-card overflow-hidden relative flex items-center justify-center bg-black">
                             {resolvedThumb ? (
-                                <img
+                                <Image
                                     src={resolvedThumb}
                                     alt={asset.title}
-                                    className="w-full h-full object-contain"
+                                    fill
+                                    sizes="(max-width: 1024px) 100vw, 66vw"
+                                    priority
+                                    className="object-contain"
                                 />
                             ) : (
                                 <div className="flex flex-col items-center gap-4 text-zinc-600">

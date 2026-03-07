@@ -111,8 +111,7 @@ export class StorageEngine {
       if (result.error) return { url: fileId, error: result.error };
     }
     
-    // TODO: Implement 123Pan and Juhe resolution logic if needed
-    // For now, return as is (assuming it might be a direct link or handled elsewhere)
+    // 123Pan / Juhe: 当前直接返回原始链接，由前端或客户端处理
     return { url: fileId };
   }
 

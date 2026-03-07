@@ -1,79 +1,146 @@
-# AnimoSaaS 部署指南 (Deployment Guide)
+# 部署指南
 
-AnimoSaaS 支持多种部署方式，推荐使用 **Docker Compose** 进行私有化部署，或组合使用 **Vercel + 云数据库** 获得边缘加速体验。
+## Docker 部署（推荐）
 
----
+### 一键部署
 
-## 方式一：使用 Docker Compose (推荐，最适合私有化)
+```bash
+bash scripts/deploy.sh
+```
 
-该方式将同时启动应用程序和 PostgreSQL 数据库，适合部署在云服务器 (如阿里云、腾讯云) 或本地 NAS。
-
-### 1. 准备环境配置
-
-复制默认的环境变量文件，并填入您的安全密钥：
+### 手动 Docker Compose
 
 ```bash
 cp .env.example .env
+# 编辑 .env 设置必要变量
+docker-compose up -d
 ```
 
-确保在 `.env` 中修改以下核心配置：
+### 环境变量
 
-- `ADMIN_PASSWORD`: 系统初始管理员密码 (必改，首次启动有效)
-- `JWT_SECRET`: 用于签发认证 Token 的随机长字符串 (必填)
+| 变量 | 必填 | 说明 |
+|------|------|------|
+| `DATABASE_URL` | 是 | PostgreSQL 连接串 |
+| `JWT_SECRET` | 是 | JWT 签名密钥（32+ 字符） |
+| `SUPER_ADMIN_EMAIL` | 是 | 超级管理员邮箱 |
+| `SUPER_ADMIN_PASSWORD` | 是 | 超级管理员密码 |
+| `DEFAULT_TENANT_NAME` | 否 | 默认租户名称 |
+| `TENANT_MODE` | 否 | 租户识别模式：`subdomain` / `path` / `header` |
+| `LOG_LEVEL` | 否 | 日志级别：`info` / `debug` / `warn` / `error` |
 
-### 2. 构建并启动容器
+### 启动流程
 
-在项目根目录运行以下命令：
+容器入口 `scripts/docker-entrypoint.sh` 依次执行：
+
+1. 等待 PostgreSQL 就绪（最多 30 次重试）
+2. `prisma migrate deploy`（失败回退到 `prisma db push`）
+3. 多租户初始化脚本（幂等）
+4. 启动 Node.js
+
+### 健康检查
 
 ```bash
-docker-compose up -d --build
+# 存活检查
+curl http://localhost:3000/api/health
+
+# 就绪检查（验证数据库、默认租户、超级管理员）
+curl http://localhost:3000/api/health/ready
 ```
 
-此命令将：
-
-1. 启动 PostgreSQL 数据库，仅监听内部端口。
-2. 自动运行 `npx prisma db push` 初始化数据表结构。
-3. 启动 AnimoSaaS Node.js 服务。
-
-### 3. 访问系统
-
-启动成功后，访问 `http://你的服务器IP:3000` 即可看到前端页面。
-访问 `http://你的服务器IP:3000/admin/login` 并使用以下默认账号登录：
-
-- **邮箱**: admin@animosaas.local
-- **密码**: (您在 .env 文件中填写的 `ADMIN_PASSWORD`)
-
----
-
-## 方式二：使用 Vercel + 云端 PostgreSQL 部署
-
-如果您只希望部署前端/应用层，并将数据库交由云服务商管理（例如 Supabase, Railway, Neon），请按以下步骤操作：
-
-### 1. 准备云数据库
-
-1. 在 [Supabase](https://supabase.com/) 或任意支持 PostgreSQL 的服务商处申请一个免费数据库。
-2. 获取 `DATABASE_URL` (连接字符串格式)。
-
-### 2. Vercel 部署
-
-1. Fork 本项目到您的 GitHub。
-2. 在 Vercel 面板中导入代码库。
-3. 在 **Environment Variables** 环节，填入以下必填项：
-   - `DATABASE_URL`: 您的云数据库连接URL
-   - `JWT_SECRET`: 自己随机生成的一长段字符
-   - `ADMIN_PASSWORD`: 您希望的初始管理员密码
-4. 点击 Deploy 即可。
-
-如果部署报错缺少数据库表结构，您可以在您的开发机上本地执行以下命令将表结构推送到云端：
+### 运维命令
 
 ```bash
-npx prisma db push
+bash scripts/deploy.sh --update   # 更新部署
+bash scripts/deploy.sh --logs     # 查看日志
+bash scripts/deploy.sh --stop     # 停止服务
+bash scripts/deploy.sh --reset    # 重置数据
+bash scripts/deploy.sh --status   # 查看状态
 ```
 
----
+## Nginx 反向代理
 
-## 安全与生产建议
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+    return 301 https://$server_name$request_uri;
+}
 
-- **Nginx 反代与 SSL**: 如果使用 Docker 部署，请务必在前方配置 Nginx 代理，并申请 HTTPS 证书。
-- **防火墙配置**: 如果服务器有公网 IP，请确保防火墙（如 ufw / 阿里云安全组）禁止外部直接访问 `5432` 端口，只开放 `80` 和 `443`。
-- **强制 HTTPS**: 生产环境下强烈建议开启 `DISABLE_SECURE_COOKIE=false` (只需不在外部传入该变量即可，代码默认非开发环境为 true)。
+server {
+    listen 443 ssl http2;
+    server_name your-domain.com;
+
+    ssl_certificate /etc/ssl/certs/your-domain.crt;
+    ssl_certificate_key /etc/ssl/private/your-domain.key;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+    location /_next/static/ {
+        proxy_pass http://127.0.0.1:3000;
+        expires 365d;
+        add_header Cache-Control "public, immutable";
+    }
+}
+```
+
+### SSL 证书
+
+```bash
+apt install certbot python3-certbot-nginx
+certbot --nginx -d your-domain.com
+```
+
+## 备份
+
+```bash
+# 手动备份
+docker exec animosaas-db pg_dump -U postgres animosaas > backup_$(date +%Y%m%d).sql
+
+# 恢复
+cat backup.sql | docker exec -i animosaas-db psql -U postgres animosaas
+```
+
+定时备份（cron）：
+
+```bash
+0 3 * * * docker exec animosaas-db pg_dump -U postgres animosaas | gzip > /backups/animosaas_$(date +\%Y\%m\%d).sql.gz
+```
+
+## 手动部署
+
+```bash
+npm ci
+cp .env.example .env        # 编辑环境变量
+npx prisma migrate deploy   # 数据库迁移
+npx tsx scripts/init-multi-tenant.ts  # 多租户初始化
+npm run build               # 构建
+npm start                   # 启动
+```
+
+使用 PM2 管理进程：
+
+```bash
+pm2 start npm --name animosaas -- start
+pm2 save && pm2 startup
+```
+
+## 安全加固
+
+```bash
+# 防火墙
+ufw allow 22/tcp && ufw allow 80/tcp && ufw allow 443/tcp && ufw enable
+```
+
+- 生产环境务必设置强 `JWT_SECRET`
+- 启用 HTTPS
+- 数据库不要暴露到公网
+- 定期备份数据

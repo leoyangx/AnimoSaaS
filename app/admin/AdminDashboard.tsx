@@ -22,16 +22,14 @@ import { motion } from 'motion/react';
 import { formatDate, cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-} from 'recharts';
+  LazyAreaChart as AreaChart,
+  LazyArea as Area,
+  LazyXAxis as XAxis,
+  LazyYAxis as YAxis,
+  LazyCartesianGrid as CartesianGrid,
+  LazyTooltip as Tooltip,
+  LazyResponsiveContainer as ResponsiveContainer,
+} from '@/components/LazyCharts';
 
 export default function AdminDashboard({
   stats,
@@ -477,8 +475,8 @@ export default function AdminDashboard({
             查看完整日志
           </button>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        <div className="table-responsive">
+          <table className="w-full text-left border-collapse min-w-[500px]">
             <thead>
               <tr className="border-b border-white/5">
                 <th className="pb-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500">

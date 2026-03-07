@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { getTenantIdFromRequest } from '@/lib/tenant-context';
+import { decrementQuota } from '@/lib/quota';
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession('admin');
@@ -9,6 +11,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const { id } = await params;
+  const tenantId = getTenantIdFromRequest(req);
   const { disabled, password } = await req.json();
 
   const updateData: any = {};
@@ -25,7 +28,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const details = password
     ? `修改学员 ID: ${id} 的密码`
     : `修改学员 ID: ${id} 的状态为: ${disabled ? '禁用' : '启用'}`;
-  await db.logs.create(action, (session as any).email, details);
+  await db.logs.create(action, (session as any).email, tenantId, details);
 
   return NextResponse.json({ success: true });
 }
@@ -37,10 +40,14 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   }
 
   const { id } = await params;
+  const tenantId = getTenantIdFromRequest(req);
   await db.users.delete(id);
 
+  // 更新配额
+  await decrementQuota(tenantId, 'users');
+
   // Log action
-  await db.logs.create('DELETE_USER', (session as any).email, `删除学员 ID: ${id}`);
+  await db.logs.create('DELETE_USER', (session as any).email, tenantId, `删除学员 ID: ${id}`);
 
   return NextResponse.json({ success: true });
 }

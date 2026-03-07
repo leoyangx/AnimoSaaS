@@ -51,7 +51,7 @@ export function CodeManager({ initialCodes }: { initialCodes: any[] }) {
 
   return (
     <div className="space-y-8">
-      <header className="flex items-center justify-between">
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-display font-bold">邀请码管理</h1>
           <p className="text-zinc-500 text-sm">生成并分发邀请码，控制学员入驻。</p>
@@ -95,7 +95,8 @@ export function CodeManager({ initialCodes }: { initialCodes: any[] }) {
       </div>
 
       <div className="glass-card overflow-hidden">
-        <table className="w-full text-left border-collapse">
+        <div className="table-responsive">
+        <table className="w-full text-left border-collapse min-w-[600px]">
           <thead>
             <tr className="border-b border-white/10 bg-white/5">
               <th className="px-6 py-4 text-xs font-mono uppercase tracking-widest text-zinc-500">
@@ -149,6 +150,7 @@ export function CodeManager({ initialCodes }: { initialCodes: any[] }) {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

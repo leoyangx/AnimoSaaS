@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { db } from '@/lib/db';
+import { getTenantIdFromRequest } from '@/lib/tenant-context';
 import { errorResponse, successResponse } from '@/lib/api-response';
 import { z } from 'zod';
 
@@ -19,6 +20,7 @@ export async function POST(req: Request) {
       return errorResponse('未授权访问', 401);
     }
 
+    const tenantId = getTenantIdFromRequest(req);
     const body = await req.json();
     const validationResult = batchUserOperationSchema.safeParse(body);
 
@@ -43,6 +45,7 @@ export async function POST(req: Request) {
         result = await prisma.user.updateMany({
           where: {
             id: { in: userIds },
+            tenantId,
             role: { not: 'admin' }, // 防止删除管理员
           },
           data: { deletedAt: new Date() },
@@ -51,6 +54,7 @@ export async function POST(req: Request) {
         await db.logs.create(
           'BATCH_DELETE_USERS',
           (session as any).email,
+          tenantId,
           `批量删除 ${result.count} 个用户`
         );
         break;
@@ -58,26 +62,28 @@ export async function POST(req: Request) {
       case 'restore':
         // 恢复软删除
         result = await prisma.user.updateMany({
-          where: { id: { in: userIds }, deletedAt: { not: null } },
+          where: { id: { in: userIds }, tenantId, deletedAt: { not: null } },
           data: { deletedAt: null },
         });
         message = `成功恢复 ${result.count} 个用户`;
         await db.logs.create(
           'BATCH_RESTORE_USERS',
           (session as any).email,
+          tenantId,
           `批量恢复 ${result.count} 个用户`
         );
         break;
 
       case 'enable':
         result = await prisma.user.updateMany({
-          where: { id: { in: userIds } },
+          where: { id: { in: userIds }, tenantId },
           data: { disabled: false },
         });
         message = `成功启用 ${result.count} 个用户`;
         await db.logs.create(
           'BATCH_ENABLE_USERS',
           (session as any).email,
+          tenantId,
           `批量启用 ${result.count} 个用户`
         );
         break;
@@ -86,6 +92,7 @@ export async function POST(req: Request) {
         result = await prisma.user.updateMany({
           where: {
             id: { in: userIds },
+            tenantId,
             role: { not: 'admin' }, // 防止禁用管理员
           },
           data: { disabled: true },
@@ -94,6 +101,7 @@ export async function POST(req: Request) {
         await db.logs.create(
           'BATCH_DISABLE_USERS',
           (session as any).email,
+          tenantId,
           `批量禁用 ${result.count} 个用户`
         );
         break;
@@ -108,6 +116,7 @@ export async function POST(req: Request) {
         result = await prisma.user.updateMany({
           where: {
             id: { in: userIds },
+            tenantId,
             role: { not: 'admin' }, // 防止修改管理员角色
           },
           data: { role },
@@ -116,6 +125,7 @@ export async function POST(req: Request) {
         await db.logs.create(
           'BATCH_UPDATE_ROLE',
           (session as any).email,
+          tenantId,
           `批量更新 ${result.count} 个用户的角色为 ${role}`
         );
         break;
