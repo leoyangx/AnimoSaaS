@@ -17,7 +17,7 @@ set -euo pipefail
 
 # ── Constants ────────────────────────────────────────────────
 
-readonly ANIMOSAAS_VERSION="2.0.0"
+readonly ANIMOSAAS_VERSION="1.0.0"
 readonly ANIMOSAAS_MIN_DOCKER="20.10.0"
 readonly ANIMOSAAS_MIN_DISK_MB=2048
 readonly ANIMOSAAS_HEALTH_TIMEOUT=180
