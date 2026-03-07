@@ -1,0 +1,363 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// 多租户核心模型
+// ============================================================
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  plan      String   @default("free") // free, pro, enterprise
+  status    String   @default("active") // active, suspended, deleted
+  domain    String?  @unique
+  settings  String   @default("{}") // JSON: 租户级别自定义配置
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 关联
+  quota          TenantQuota?
+  users          User[]
+  assets         Asset[]
+  assetCategories AssetCategory[]
+  downloadLogs   DownloadLog[]
+  invitationCodes InvitationCode[]
+  siteConfigs    SiteConfig[]
+  adminLogs      AdminLog[]
+  topNavs        TopNav[]
+  navigations    Navigation[]
+  apiKeys        ApiKey[]
+
+  @@index([status])
+  @@index([plan])
+}
+
+model TenantQuota {
+  id          String @id @default(cuid())
+  tenantId    String @unique
+  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  maxUsers    Int    @default(10)
+  maxStorage  BigInt @default(1073741824) // 1GB in bytes
+  maxAssets   Int    @default(100)
+  usedStorage BigInt @default(0)
+  usedAssets  Int    @default(0)
+  usedUsers   Int    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SuperAdmin {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  lastLogin DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================================
+// API 密钥管理
+// ============================================================
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  name        String
+  keyHash     String    @unique // SHA-256 哈希存储
+  keyPrefix   String    // 密钥前缀，用于识别（如 "ak_xxxx"）
+  permissions String[]  @default([]) // 权限范围: assets:read, assets:write, users:read 等
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdById String?   // 创建者用户 ID
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([keyHash])
+  @@index([isActive])
+}
+
+// ============================================================
+// 权限管理
+// ============================================================
+
+model Permission {
+  id          String           @id @default(cuid())
+  name        String           @unique // 如 "assets:read", "users:manage"
+  scope       String           @default("tenant") // tenant, global
+  description String?
+  createdAt   DateTime         @default(now())
+  rolePermissions RolePermission[]
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  role         String     // USER, ADMIN 等
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([role, permissionId])
+  @@index([role])
+}
+
+// ============================================================
+// System Configuration (used by settings-service.ts)
+// ============================================================
+
+model SystemSettings {
+  id           String   @id @default("default")
+  siteName     String   @default("AnimoSaaS")
+  logoUrl      String?
+  footerText   String   @default("© 2024 AnimoSaaS. All rights reserved.")
+  primaryColor String   @default("#00ff88")
+  updatedAt    DateTime @updatedAt
+}
+
+model StorageSettings {
+  id        String   @id @default("default")
+  provider  String   @default("LOCAL") // LOCAL, ALIST, S3
+  config    String   @default("{}") // JSON string for provider-specific config
+  updatedAt DateTime @updatedAt
+}
+
+model SecuritySettings {
+  id                String   @id @default("default")
+  allowRegistration Boolean  @default(true)
+  requireInvitation Boolean  @default(false)
+  adminEmail        String?
+  updatedAt         DateTime @updatedAt
+}
+
+// ============================================================
+// Navigation (used by settings-service.ts)
+// ============================================================
+
+model Navigation {
+  id        String   @id @default(cuid())
+  label     String
+  icon      String?  @default("Link")
+  type      String   @default("MODULE") // MODULE, CATEGORY, EXTERNAL
+  value     String // Module ID, Category ID, or External URL
+  order     Int      @default(0)
+  isEnabled Boolean  @default(true)
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+// ============================================================
+// Top Navigation (used by db.navigation / lib/types.ts TopNav)
+// ============================================================
+
+model TopNav {
+  id          String   @id @default(cuid())
+  name        String
+  targetType  String   @default("INTERNAL") // INTERNAL, EXTERNAL, CATEGORY
+  targetValue String
+  order       Int      @default(0)
+  status      String   @default("active") // active, hidden
+  icon        String?
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+// ============================================================
+// Asset Management
+// ============================================================
+
+model AssetCategory {
+  id       String          @id @default(cuid())
+  name     String
+  parentId String?
+  parent   AssetCategory?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children AssetCategory[] @relation("CategoryTree")
+  order    Int             @default(0)
+  status   String          @default("active") // active, hidden
+  icon     String?
+  tenantId String
+  tenant   Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assets   Asset[]
+  deletedAt DateTime?      // 软删除
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([tenantId])
+  @@index([parentId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model Asset {
+  id              String         @id @default(cuid())
+  title           String
+  description     String?
+  thumbnail       String?
+  categoryId      String?
+  assetCategory   AssetCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tags            String[]       @default([])
+  downloadUrl     String
+  isDirectDownload Boolean       @default(false)
+  storageProvider String         @default("LOCAL")
+  downloadCount   Int            @default(0)
+  fileSize        BigInt         @default(0) // 文件大小（字节）
+  tenantId        String
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  downloadLogs    DownloadLog[]
+  deletedAt       DateTime?      // 软删除
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([tenantId])
+  @@index([categoryId])
+  @@index([createdAt])
+  @@index([downloadCount])
+  @@index([title])
+  @@index([deletedAt])
+}
+
+model DownloadLog {
+  id        String   @id @default(cuid())
+  assetId   String
+  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  userId    String?
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([assetId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// ============================================================
+// User Management
+// ============================================================
+
+model User {
+  id        String    @id @default(cuid())
+  email     String
+  password  String
+  role      String    @default("USER") // USER, ADMIN, student
+  disabled  Boolean   @default(false)
+  lastLogin DateTime?
+  ip        String?
+  city      String?
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deletedAt DateTime? // 软删除
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([role])
+  @@index([disabled])
+  @@index([createdAt])
+  @@index([deletedAt])
+}
+
+// ============================================================
+// Invitation Codes
+// ============================================================
+
+model InvitationCode {
+  id        String   @id @default(cuid())
+  code      String
+  status    String   @default("unused") // unused, used
+  usedBy    String?
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ============================================================
+// Site Configuration (used by db.config / SiteConfig type)
+// ============================================================
+
+model SiteConfig {
+  id                       Int      @id @default(autoincrement())
+  logo                     String   @default("")
+  title                    String   @default("AnimoSaaS")
+  slogan                   String   @default("为创作者而生，构建您的私域素材资产")
+  footer                   String   @default("© 2024 AnimoSaaS. All Rights Reserved.")
+  themeColor               String   @default("#00FF00")
+  watermark                String   @default("ANIMOSAAS")
+
+  // Registration & Login
+  emailVerificationEnabled Boolean  @default(false)
+  smtpHost                 String?
+  smtpPort                 Int?
+  smtpUser                 String?
+  smtpPass                 String?
+  smtpFrom                 String?
+
+  // Storage - AList
+  alistUrl                 String?
+  alistToken               String?
+  alistRoot                String?  @default("/")
+
+  // Storage - 123Pan
+  pan123Token              String?
+  pan123Root               String?  @default("/")
+
+  // Storage - Juhe
+  juheUrl                  String?
+  juheToken                String?
+
+  // Theme
+  primaryColor             String?
+  secondaryColor           String?
+
+  // 多租户
+  tenantId                 String
+  tenant                   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@unique([tenantId])
+  @@index([tenantId])
+}
+
+// ============================================================
+// Admin Operation Logs
+// ============================================================
+
+model AdminLog {
+  id         String   @id @default(cuid())
+  action     String
+  adminEmail String
+  details    String?
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([adminEmail])
+  @@index([createdAt])
+  @@index([action])
+}
