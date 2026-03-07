@@ -45,7 +45,7 @@
   },
   "dependencies": {
     "@google/genai": "latest",
-    "@prisma/client": "6.4.1",
+    "@prisma/client": "7.4.2",
     "axios": "^1.13.6",
     "bcryptjs": "2.4.3",
     "clsx": "2.1.1",
