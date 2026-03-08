@@ -117,6 +117,14 @@ BANNER
   fi
 
   chmod +x "${_target}/animosaas"
+
+  # Create system-wide symlink for convenience
+  if [[ -d "/usr/local/bin" ]] && [[ ! -L "/usr/local/bin/animosaas" ]]; then
+    ln -sf "${_target}/animosaas" "/usr/local/bin/animosaas" 2>/dev/null \
+      || sudo ln -sf "${_target}/animosaas" "/usr/local/bin/animosaas" 2>/dev/null \
+      || true
+  fi
+
   printf "  %b▸%b 正在启动安装向导...\n\n" "${_C}" "${_N}"
   exec "${_target}/animosaas" "$@"
   exit 0
@@ -235,7 +243,9 @@ generate_password() {
     fi
     attempts=$((attempts + 1))
   done
-  [[ ${#pass} -lt $len ]] && pass="AnimoSaaS$(date +%s | tail -c "$len")"
+  if [[ ${#pass} -lt $len ]]; then
+    pass="AnimoSaaS$(date +%s | tail -c "$len")"
+  fi
   echo "$pass"
 }
 
@@ -666,7 +676,10 @@ validate_existing_env() {
     success "DB_PASSWORD: 已设置"
   fi
 
-  [[ "$has_error" -eq 1 ]] && { echo ""; fatal "配置校验失败。请修复 .env 文件，或删除后重新运行 ./animosaas。"; }
+  if [[ "$has_error" -eq 1 ]]; then
+    echo ""
+    fatal "配置校验失败。请修复 .env 文件，或删除后重新运行此脚本。"
+  fi
   success "配置校验通过"
 }
 
@@ -689,12 +702,17 @@ check_volume_conflict() {
       success "旧数据已清除"
     else
       echo ""
-      info "已保留旧数据卷。如遇认证错误，请运行 ${BOLD}./animosaas reset${NC}"
+      info "已保留旧数据卷。如遇认证错误，请运行 ${BOLD}$(basename "$0") reset${NC}"
     fi
   fi
 }
 
 deploy() {
+  # Ensure we're in the project root (safety net)
+  if [[ ! -f "docker-compose.yml" ]]; then
+    fatal "未找到 docker-compose.yml，请确保在项目根目录运行此脚本"
+  fi
+
   # ── Pull or Build image ──
   if [[ "$BUILD_LOCAL" -eq 1 ]]; then
     step "构建" "正在本地构建 Docker 镜像..."
@@ -710,7 +728,7 @@ deploy() {
       if [[ "$VERBOSE" -eq 1 ]]; then echo "$build_output"
       else echo "$build_output" | tail -10; info "添加 ${BOLD}--verbose${NC} 参数可查看完整构建日志"
       fi
-      exit 1
+      return 1
     fi
   else
     step "拉取" "正在拉取预构建 Docker 镜像..."
@@ -733,10 +751,11 @@ deploy() {
           spinner_stop
           error "镜像构建也失败了"
           echo "$build_output" | tail -10
-          exit 1
+          return 1
         fi
       else
-        fatal "镜像拉取失败且无 Dockerfile 可用于本地构建"
+        error "镜像拉取失败且无 Dockerfile 可用于本地构建"
+        return 1
       fi
     fi
   fi
@@ -745,13 +764,29 @@ deploy() {
   step "启动" "正在启动服务..."
   spinner_start "正在启动容器..."
 
-  local up_env=""
+  local up_output
   if [[ -n "$_WIZARD_SUPER_PASSWORD" ]]; then
-    env SUPER_ADMIN_PASSWORD="${_WIZARD_SUPER_PASSWORD}" compose up -d 2>/dev/null
+    # Shell variable assignment (not `env`) so bash function compose() works
+    up_output=$(SUPER_ADMIN_PASSWORD="${_WIZARD_SUPER_PASSWORD}" compose up -d 2>&1) || true
   else
-    compose up -d 2>/dev/null
+    up_output=$(compose up -d 2>&1) || true
   fi
   spinner_stop
+
+  # Verify containers actually started
+  local app_exists db_exists
+  app_exists=$(docker inspect --format='{{.State.Status}}' "$CONTAINER_APP" 2>/dev/null || echo "")
+  db_exists=$(docker inspect --format='{{.State.Status}}' "$CONTAINER_DB" 2>/dev/null || echo "")
+
+  if [[ -z "$app_exists" ]] && [[ -z "$db_exists" ]]; then
+    error "容器启动失败"
+    echo ""
+    printf "  %b── docker compose 输出 ──%b\n" "${YELLOW}" "${NC}"
+    echo "$up_output" | tail -20
+    echo ""
+    error "请检查上方错误信息后重试。运行 ${BOLD}cd $(pwd) && $COMPOSE_CMD up -d${NC} 手动调试。"
+    return 1
+  fi
   success "容器已启动"
 
   # ── Health check with progress ──
@@ -760,6 +795,15 @@ deploy() {
   local max_wait=$HEALTH_TIMEOUT elapsed=0 status="starting"
 
   while [[ $elapsed -lt $max_wait ]]; do
+    # Check container exists first
+    local container_state
+    container_state=$(docker inspect --format='{{.State.Status}}' "$CONTAINER_APP" 2>/dev/null || echo "")
+    if [[ -z "$container_state" ]]; then
+      printf "\r\033[K"
+      error "应用容器不存在，可能启动后立即退出"
+      status="not-found"; break
+    fi
+
     status=$(docker inspect --format='{{.State.Health.Status}}' "$CONTAINER_APP" 2>/dev/null || echo "starting")
     [[ "$status" == "healthy" ]] && break
 
@@ -832,7 +876,8 @@ EOF
   printf "  %b└──────────────────────────────────────────────────────┘%b\n" "${RED}${BOLD}" "${NC}"
   echo ""
 
-  printf "  %b提示：运行 %b./animosaas%b 进入管理面板（日志、备份、升级等）%b\n" "${DIM}" "${BOLD}" "${NC}${DIM}" "${NC}"
+  local script_path; script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/animosaas"
+  printf "  %b提示：运行 %b%s%b 进入管理面板（日志、备份、升级等）%b\n" "${DIM}" "${BOLD}" "${script_path}" "${NC}${DIM}" "${NC}"
   echo ""
 }
 
@@ -869,29 +914,41 @@ EOF
   echo ""
 
   printf "  %b── 自动诊断 ──%b\n" "${BOLD}" "${NC}"
-  local app_logs
-  app_logs=$(compose logs app --tail 50 2>/dev/null || true)
 
-  if echo "$app_logs" | grep -qi "Authentication failed\|P1000\|password authentication failed"; then
-    error "检测到数据库认证失败"
-    printf "    %b原因: .env 中的 DB_PASSWORD 与数据卷内的密码不一致%b\n" "${YELLOW}" "${NC}"
-    printf "    %b修复: ./animosaas reset%b\n" "${YELLOW}" "${NC}"
-  elif echo "$app_logs" | grep -qi "ECONNREFUSED\|Connection refused"; then
-    error "检测到数据库连接被拒绝"
-    printf "    %b原因: 数据库容器可能未正常启动%b\n" "${YELLOW}" "${NC}"
-    printf "    %b修复: $COMPOSE_CMD logs db%b\n" "${YELLOW}" "${NC}"
-  elif echo "$app_logs" | grep -qi "JWT_SECRET\|Missing.*environment"; then
-    error "检测到环境变量缺失"
-    printf "    %b修复: 检查 .env 文件完整性，或删除后重新运行 ./animosaas%b\n" "${YELLOW}" "${NC}"
+  # If containers don't even exist, specific guidance
+  local app_running db_running
+  app_running=$(docker inspect --format='{{.State.Status}}' "$CONTAINER_APP" 2>/dev/null || echo "")
+  db_running=$(docker inspect --format='{{.State.Status}}' "$CONTAINER_DB" 2>/dev/null || echo "")
+
+  if [[ -z "$app_running" ]] && [[ -z "$db_running" ]]; then
+    error "两个容器均不存在 — docker compose up 可能完全失败"
+    printf "    %b可能原因: 镜像拉取失败、compose 文件语法错误、或磁盘空间不足%b\n" "${YELLOW}" "${NC}"
+    printf "    %b手动调试: cd %s && $COMPOSE_CMD up%b\n" "${YELLOW}" "$(pwd)" "${NC}"
   else
-    warn "未匹配到已知错误模式，请查看上方日志排查"
+    local app_logs
+    app_logs=$(compose logs app --tail 50 2>/dev/null || true)
+
+    if echo "$app_logs" | grep -qi "Authentication failed\|P1000\|password authentication failed"; then
+      error "检测到数据库认证失败"
+      printf "    %b原因: .env 中的 DB_PASSWORD 与数据卷内的密码不一致%b\n" "${YELLOW}" "${NC}"
+      printf "    %b修复: cd %s && %s reset%b\n" "${YELLOW}" "$(pwd)" "$(basename "$0")" "${NC}"
+    elif echo "$app_logs" | grep -qi "ECONNREFUSED\|Connection refused"; then
+      error "检测到数据库连接被拒绝"
+      printf "    %b原因: 数据库容器可能未正常启动%b\n" "${YELLOW}" "${NC}"
+      printf "    %b修复: cd %s && $COMPOSE_CMD logs db%b\n" "${YELLOW}" "$(pwd)" "${NC}"
+    elif echo "$app_logs" | grep -qi "JWT_SECRET\|Missing.*environment"; then
+      error "检测到环境变量缺失"
+      printf "    %b修复: 检查 .env 文件完整性，或删除后重新运行此脚本%b\n" "${YELLOW}" "${NC}"
+    else
+      warn "未匹配到已知错误模式，请查看上方日志排查"
+    fi
   fi
 
   echo ""
   printf "  %b手动排查:%b\n" "${BOLD}" "${NC}"
   printf "    完整日志:    %b$COMPOSE_CMD logs app%b\n" "${DIM}" "${NC}"
   printf "    进入容器:    %bdocker exec -it %s bash%b\n" "${DIM}" "$CONTAINER_APP" "${NC}"
-  printf "    完全重置:    %b./animosaas reset%b\n" "${DIM}" "${NC}"
+  printf "    完全重置:    %b%s reset%b\n" "${DIM}" "$(basename "$0")" "${NC}"
   echo ""
 }
 
@@ -972,8 +1029,11 @@ do_version_check() {
 do_start() {
   echo ""
   info "正在启动服务..."
-  compose up -d 2>/dev/null
-  success "服务已启动"
+  if compose up -d 2>&1; then
+    success "服务已启动"
+  else
+    error "启动失败，请检查日志: ${BOLD}$COMPOSE_CMD logs${NC}"
+  fi
   press_enter
 }
 
@@ -982,8 +1042,11 @@ do_start() {
 do_stop() {
   echo ""
   info "正在停止服务..."
-  compose down 2>/dev/null
-  success "所有服务已停止"
+  if compose down 2>&1; then
+    success "所有服务已停止"
+  else
+    error "停止服务时出错"
+  fi
   press_enter
 }
 
@@ -992,8 +1055,11 @@ do_stop() {
 do_restart() {
   echo ""
   info "正在重启服务..."
-  compose restart 2>/dev/null
-  success "服务已重启"
+  if compose restart 2>&1; then
+    success "服务已重启"
+  else
+    error "重启服务时出错"
+  fi
   press_enter
 }
 
@@ -1086,7 +1152,7 @@ do_change_port() {
   success "端口已更新为: ${new_port}"
 
   if confirm "是否立即重启服务使更改生效？" "y"; then
-    compose down 2>/dev/null; compose up -d 2>/dev/null
+    compose down 2>&1 && compose up -d 2>&1
     success "服务已使用新端口重启"
   else
     warn "请手动重启服务使更改生效"
@@ -1109,7 +1175,7 @@ do_change_domain() {
   success "应用地址已更新为: ${new_url}"
 
   if confirm "是否立即重启服务使更改生效？" "y"; then
-    compose down 2>/dev/null; compose up -d 2>/dev/null
+    compose down 2>&1 && compose up -d 2>&1
     success "服务已重启"
   else
     warn "请手动重启服务使更改生效"
@@ -1349,7 +1415,7 @@ do_upgrade() {
   success "代码已更新"
 
   info "步骤 2/4: 停止服务..."
-  compose down 2>/dev/null
+  compose down 2>&1 || true
   success "服务已停止"
 
   if [[ "$BUILD_LOCAL" -eq 1 ]]; then
@@ -1376,8 +1442,12 @@ do_upgrade() {
   fi
 
   info "步骤 4/4: 启动服务..."
-  compose up -d 2>/dev/null
-  success "服务已启动"
+  if compose up -d 2>&1; then
+    success "服务已启动"
+  else
+    error "启动失败，请检查日志: ${BOLD}$COMPOSE_CMD logs${NC}"
+    press_enter; return
+  fi
 
   echo ""
   success "升级完成！"
@@ -1460,7 +1530,7 @@ EOF
 
   success "系统已重置"
   echo ""
-  info "运行 ${BOLD}./animosaas${NC} 重新开始安装向导。"
+  info "运行 ${BOLD}$(pwd)/animosaas${NC} 重新开始安装向导。"
   echo ""
   exit 0
 }
