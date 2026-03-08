@@ -3,23 +3,25 @@
 #  AnimoSaaS — 统一安装 & 管理面板
 #  https://github.com/leoyangx/AnimoSaaS
 #
-#  用法:
-#    ./animosaas              # 首次运行 → 安装向导；已部署 → 管理面板
+#  一键安装:
+#    bash <(curl -fsSL https://raw.githubusercontent.com/leoyangx/AnimoSaaS/main/animosaas)
+#
+#  手动安装:
+#    git clone https://github.com/leoyangx/AnimoSaaS.git && cd AnimoSaaS
+#    chmod +x animosaas && ./animosaas
+#
+#  管理面板:
+#    ./animosaas              # 交互式管理面板
 #    ./animosaas logs         # 直接查看实时日志
 #    ./animosaas status       # 查看服务状态
 #    ./animosaas upgrade      # 一键升级
 #    ./animosaas backup       # 备份数据库
-#    ./animosaas restart      # 重启服务
 #    ./animosaas help         # 查看帮助
 #
 #  基于 MIT 协议开源
 # ─────────────────────────────────────────────────────────────
 
 set -euo pipefail
-
-# ── Auto chmod +x ────────────────────────────────────────────
-
-[[ -x "${BASH_SOURCE[0]}" ]] || chmod +x "${BASH_SOURCE[0]}" 2>/dev/null || true
 
 # ── Constants ────────────────────────────────────────────────
 
@@ -30,6 +32,82 @@ readonly HEALTH_TIMEOUT=180
 readonly CONTAINER_APP="animosaas-app"
 readonly CONTAINER_DB="animosaas-db"
 readonly REPO_URL="https://github.com/leoyangx/AnimoSaaS.git"
+readonly INSTALL_DIR="${ANIMOSAAS_INSTALL_DIR:-/opt/animosaas}"
+
+# ── curl | bash detection ───────────────────────────────────
+# When run via `curl ... | bash`, BASH_SOURCE is empty and we
+# need to clone the repo first, then re-execute the local copy.
+
+if [[ -z "${BASH_SOURCE[0]:-}" ]] || [[ "${BASH_SOURCE[0]}" == "bash" ]] || [[ "${BASH_SOURCE[0]}" == "/dev/stdin" ]] || [[ "${BASH_SOURCE[0]}" == "-" ]]; then
+  # ── We are being piped from curl ──
+  _PIPED=1
+
+  # Minimal color support for the bootstrap phase
+  if [[ -t 1 ]] 2>/dev/null && [[ "${TERM:-}" != "dumb" ]]; then
+    _B='\033[1m'; _C='\033[0;36m'; _G='\033[0;32m'; _R='\033[0;31m'; _Y='\033[1;33m'; _N='\033[0m'
+  else
+    _B=''; _C=''; _G=''; _R=''; _Y=''; _N=''
+  fi
+
+  printf "\n%b" "${_C}"
+  cat << 'BANNER'
+       _          _                 ____              ____
+      / \   _ __ (_)_ __ ___   ___/ ___|  __ _  __ _/ ___|
+     / _ \ | '_ \| | '_ ` _ \ / _ \___ \ / _` |/ _` \___ \
+    / ___ \| | | | | | | | | | (_) |__) | (_| | (_| |___) |
+   /_/   \_\_| |_|_|_| |_| |_|\___/____/ \__,_|\__,_|____/
+BANNER
+  printf "%b\n" "${_N}"
+  printf "  %b一键安装模式%b  v%s\n\n" "${_B}" "${_N}" "${VERSION}"
+
+  # Check git
+  if ! command -v git &>/dev/null; then
+    printf "  %b✘ Git 未安装%b\n" "${_R}" "${_N}"
+    printf "    Ubuntu/Debian: sudo apt install git\n"
+    printf "    CentOS/RHEL:   sudo yum install git\n"
+    exit 1
+  fi
+
+  # Check docker
+  if ! command -v docker &>/dev/null; then
+    printf "  %b✘ Docker 未安装%b\n" "${_R}" "${_N}"
+    printf "    安装: https://docs.docker.com/get-docker/\n"
+    exit 1
+  fi
+
+  # Determine install directory
+  _target="${INSTALL_DIR}"
+  printf "  %b▸%b 安装目录: %b%s%b\n" "${_C}" "${_N}" "${_B}" "${_target}" "${_N}"
+
+  if [[ -d "${_target}/.git" ]]; then
+    printf "  %b✔%b 检测到已有安装，拉取最新代码...\n" "${_G}" "${_N}"
+    cd "${_target}"
+    git pull origin main 2>/dev/null || true
+  else
+    printf "  %b▸%b 正在克隆仓库...\n" "${_C}" "${_N}"
+    # Create parent dir if needed
+    mkdir -p "$(dirname "${_target}")" 2>/dev/null || sudo mkdir -p "$(dirname "${_target}")"
+    if [[ -w "$(dirname "${_target}")" ]]; then
+      git clone "${REPO_URL}" "${_target}" 2>/dev/null
+    else
+      sudo git clone "${REPO_URL}" "${_target}" 2>/dev/null
+      sudo chown -R "$(id -u):$(id -g)" "${_target}"
+    fi
+    cd "${_target}"
+    printf "  %b✔%b 仓库克隆完成\n" "${_G}" "${_N}"
+  fi
+
+  # Make the local script executable and re-execute it
+  chmod +x "${_target}/animosaas"
+  printf "  %b▸%b 正在启动安装向导...\n\n" "${_C}" "${_N}"
+  exec "${_target}/animosaas" "$@"
+  exit 0
+fi
+
+# ── Normal execution (local file) ───────────────────────────
+
+# Auto chmod +x
+[[ -x "${BASH_SOURCE[0]}" ]] || chmod +x "${BASH_SOURCE[0]}" 2>/dev/null || true
 
 # ── Terminal Colors & Symbols ────────────────────────────────
 
