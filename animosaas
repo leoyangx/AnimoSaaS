@@ -25,7 +25,7 @@ set -euo pipefail
 
 # ── Constants ────────────────────────────────────────────────
 
-readonly VERSION="1.0.0"
+readonly ANIMOSAAS_VERSION="1.0.0"
 readonly MIN_DOCKER="20.10.0"
 readonly MIN_DISK_MB=2048
 readonly HEALTH_TIMEOUT=180
@@ -58,7 +58,7 @@ if [[ -z "${BASH_SOURCE[0]:-}" ]] || [[ "${BASH_SOURCE[0]}" == "bash" ]] || [[ "
    /_/   \_\_| |_|_|_| |_| |_|\___/____/ \__,_|\__,_|____/
 BANNER
   printf "%b\n" "${_N}"
-  printf "  %b一键安装模式%b  v%s\n\n" "${_B}" "${_N}" "${VERSION}"
+  printf "  %b一键安装模式%b  v%s\n\n" "${_B}" "${_N}" "${ANIMOSAAS_VERSION}"
 
   # Check git
   if ! command -v git &>/dev/null; then
@@ -310,7 +310,7 @@ BANNER
   printf "%b" "${NC}"
   echo ""
   printf "  %b多租户私域素材管理平台%b  %bv%s%b\n" \
-    "${BOLD}" "${NC}" "${DIM}" "${VERSION}" "${NC}"
+    "${BOLD}" "${NC}" "${DIM}" "${ANIMOSAAS_VERSION}" "${NC}"
   printf "  %b%s%b\n" "${DIM}" "${REPO_URL}" "${NC}"
   echo ""
 }
@@ -328,7 +328,7 @@ print_banner_panel() {
 
 BANNER
   printf "%b" "${NC}"
-  printf "  %b管理面板%b  v%s\n" "${BOLD}${WHITE}" "${NC}" "${VERSION}"
+  printf "  %b管理面板%b  v%s\n" "${BOLD}${WHITE}" "${NC}" "${ANIMOSAAS_VERSION}"
   echo ""
 }
 
@@ -783,7 +783,7 @@ do_version_check() {
   echo ""
   printf "  %b版本信息%b\n" "${BOLD}" "${NC}"
   echo ""
-  printf "  当前版本: %bv%s%b\n" "${GREEN}" "${VERSION}" "${NC}"
+  printf "  当前版本: %bv%s%b\n" "${GREEN}" "${ANIMOSAAS_VERSION}" "${NC}"
 
   if [[ -d .git ]]; then
     local current_branch current_commit
@@ -1381,11 +1381,11 @@ cli_dispatch() {
     restore)                echo ""; do_restore ;;
     reset)                           do_reset ;;
     version|--version|-V)
-      printf "  AnimoSaaS v%s\n" "${VERSION}"
+      printf "  AnimoSaaS v%s\n" "${ANIMOSAAS_VERSION}"
       ;;
     help|--help|-h)
       printf "\n"
-      printf "  %bAnimoSaaS%b v%s\n" "${BOLD}" "${NC}" "${VERSION}"
+      printf "  %bAnimoSaaS%b v%s\n" "${BOLD}" "${NC}" "${ANIMOSAAS_VERSION}"
       printf "  %b多租户私域素材管理平台 — 统一安装 & 管理工具%b\n" "${DIM}" "${NC}"
       printf "\n"
       printf "  %b用法:%b  ./animosaas [命令]\n" "${BOLD}" "${NC}"
