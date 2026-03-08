@@ -26,14 +26,15 @@ export default function AdminLoginPage() {
 
       const data = await res.json();
       if (res.ok) {
-        if (data.user.role !== 'admin') {
+        const role = data.data?.user?.role;
+        if (role !== 'ADMIN') {
           setError('您没有管理员权限');
           return;
         }
         router.push('/admin');
         router.refresh();
       } else {
-        setError(data.error);
+        setError(data.error || '登录失败');
       }
     } catch (e) {
       setError('连接服务器失败');

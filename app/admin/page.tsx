@@ -1,15 +1,13 @@
 export const dynamic = 'force-dynamic';
 
-import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { getTenantId } from '@/lib/tenant-context';
-import AdminSidebar from './AdminSidebar';
 import AdminDashboard from './AdminDashboard';
 
 export default async function AdminHomePage() {
-  const session = await getSession('admin');
-  if (!session || session.role !== 'ADMIN') redirect('/admin/login');
+  // Auth is checked in layout.tsx; session is guaranteed here
+  const session = (await getSession('admin'))!;
 
   const tenantId = await getTenantId();
   const users = await db.users.getAll(tenantId);
@@ -58,18 +56,13 @@ export default async function AdminHomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-bg-dark flex">
-      <AdminSidebar />
-      <main className="flex-1 p-8 overflow-y-auto">
-        <AdminDashboard
-          stats={stats}
-          users={JSON.parse(JSON.stringify(users))}
-          codes={JSON.parse(JSON.stringify(codes))}
-          config={JSON.parse(JSON.stringify(config))}
-          chartData={chartData}
-          adminLogs={JSON.parse(JSON.stringify(logs))}
-        />
-      </main>
-    </div>
+    <AdminDashboard
+      stats={stats}
+      users={JSON.parse(JSON.stringify(users))}
+      codes={JSON.parse(JSON.stringify(codes))}
+      config={JSON.parse(JSON.stringify(config))}
+      chartData={chartData}
+      adminLogs={JSON.parse(JSON.stringify(logs))}
+    />
   );
 }

@@ -27,14 +27,15 @@ export default function LoginPage() {
 
       const data = await res.json();
       if (res.ok) {
-        if (data.user.role === 'admin') {
+        const role = data.data?.user?.role;
+        if (role === 'ADMIN') {
           router.push('/admin');
         } else {
           router.push('/');
         }
         router.refresh();
       } else {
-        setError(data.error);
+        setError(data.error || '登录失败');
       }
     } catch (e) {
       setError('连接服务器失败');

@@ -53,8 +53,22 @@ const nextConfig: NextConfig = {
     },
   },
 
-  // 静态资源缓存头
+  // 安全 & 缓存头
   headers: async () => [
+    {
+      // 全站安全头
+      source: '/(.*)',
+      headers: [
+        { key: 'X-Content-Type-Options', value: 'nosniff' },
+        { key: 'X-Frame-Options', value: 'DENY' },
+        { key: 'X-XSS-Protection', value: '1; mode=block' },
+        { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        {
+          key: 'Permissions-Policy',
+          value: 'camera=(), microphone=(), geolocation=()',
+        },
+      ],
+    },
     {
       source: '/_next/static/:path*',
       headers: [

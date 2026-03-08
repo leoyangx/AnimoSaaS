@@ -60,7 +60,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       tenantId = defaultTenant?.id || '';
     }
     const config = tenantId ? await db.config.get(tenantId) : null;
-    primaryColor = config?.themeColor || '#00ff88';
+    const rawColor = config?.themeColor || '#00ff88';
+    // Sanitize: only allow valid hex color codes to prevent XSS
+    primaryColor = /^#[0-9A-Fa-f]{6}$/.test(rawColor) ? rawColor : '#00ff88';
   } catch {
     // DB unavailable (build time) — use default theme color
   }

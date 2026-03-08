@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
     await db.users.create(tenantId, {
       email: adminEmail,
       password: hashedPassword,
-      role: 'admin',
+      role: 'ADMIN',
     });
 
     // 如果是自动生成的密码，返回给用户

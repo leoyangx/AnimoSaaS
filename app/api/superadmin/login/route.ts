@@ -2,11 +2,18 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createSuperAdminToken } from '@/lib/auth';
 import { errorResponse, successResponse } from '@/lib/api-response';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import bcrypt from 'bcryptjs';
 
 export async function POST(req: Request) {
   try {
-    const { email, password } = await req.json();
+    // Rate limiting - stricter for superadmin
+    const ip = getClientIp(req);
+    const rateLimitError = checkRateLimit(ip, 'auth');
+    if (rateLimitError) return rateLimitError;
+
+    const body = await req.json();
+    const { email, password } = body;
 
     if (!email || !password) {
       return errorResponse('请输入邮箱和密码', 400);

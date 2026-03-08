@@ -2,24 +2,27 @@
  * 租户上下文管理
  *
  * 提供从 Next.js 请求中获取租户信息的便捷方法。
- * 租户信息由 middleware 在请求头中注入：
- *   - X-Tenant-Id: 租户数据库 ID
- *   - X-Tenant-Slug: 租户标识符
+ * 对于 API 路由：租户信息由 middleware 在请求头中注入。
+ * 对于页面路由：如果 middleware 未注入，则回退到默认租户。
  */
 
 import { headers } from 'next/headers';
 
 /**
  * 从当前请求的 headers 中获取租户 ID
- * 用于 Server Components 和 Route Handlers
+ * 如果 middleware 未注入（页面路由），则回退到默认租户
  */
 export async function getTenantId(): Promise<string> {
   const headerStore = await headers();
   const tenantId = headerStore.get('x-tenant-id');
-  if (!tenantId) {
-    throw new Error('租户上下文未初始化：缺少 X-Tenant-Id 请求头');
-  }
-  return tenantId;
+  if (tenantId) return tenantId;
+
+  // 页面路由可能未经过 middleware，回退到默认租户
+  const { getTenantBySlug } = await import('./tenant');
+  const defaultTenant = await getTenantBySlug('default');
+  if (defaultTenant) return defaultTenant.id;
+
+  throw new Error('租户上下文未初始化：缺少 X-Tenant-Id 请求头且无默认租户');
 }
 
 /**
