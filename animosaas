@@ -490,10 +490,20 @@ check_prerequisites() {
   fi
 
   # ── Disk space ──
+  # Use multiple strategies: df -P -m, df --output, df -k fallback
   local available_mb=""
-  available_mb=$(df -Pm "$(pwd)" 2>/dev/null | awk 'NR==2{print $4}') || true
+  available_mb=$(df -P -m "$(pwd)" 2>/dev/null | awk 'NR==2{print $4}') || true
   if [[ -z "$available_mb" ]] || ! [[ "$available_mb" =~ ^[0-9]+$ ]]; then
-    available_mb=$(df -m --output=avail "$(pwd)" 2>/dev/null | awk 'NR==2{print $1}') || true
+    available_mb=$(df --output=avail -BM "$(pwd)" 2>/dev/null | awk 'NR==2{gsub(/M/,""); print $1}') || true
+  fi
+  if [[ -z "$available_mb" ]] || ! [[ "$available_mb" =~ ^[0-9]+$ ]]; then
+    # Final fallback: df -k and convert to MB
+    local available_kb=""
+    available_kb=$(df -P "$(pwd)" 2>/dev/null | awk 'NR==2{print $4}') || true
+    available_kb="${available_kb//[!0-9]/}"
+    if [[ -n "$available_kb" ]] && [[ "$available_kb" =~ ^[0-9]+$ ]]; then
+      available_mb=$((available_kb / 1024))
+    fi
   fi
   available_mb="${available_mb//[!0-9]/}"
   available_mb="${available_mb:-0}"
@@ -532,7 +542,10 @@ check_prerequisites() {
     lsof -i ":${app_port}" &>/dev/null && warn "端口 ${app_port} 已被占用"
   fi
 
-  [[ "$failed" -ne 0 ]] && { echo ""; fatal "预检未通过，请先解决以上问题后重试。"; }
+  if [[ "$failed" -ne 0 ]]; then
+    echo ""
+    fatal "预检未通过，请先解决以上问题后重试。"
+  fi
 }
 
 # ══════════════════════════════════════════════════════════════
