@@ -9,8 +9,6 @@ import {
   Menu,
   X,
   ArrowRight,
-  Sun,
-  Moon,
   Package,
   Play,
   Cpu,
@@ -19,7 +17,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
-import { useTheme } from 'next-themes';
 
 // Icon mapping for navigation items
 const IconMap: Record<string, any> = {
@@ -42,8 +39,6 @@ const ModuleRoutes: Record<string, string> = {
 export function Navbar({ user, settings }: { user: any; settings: any }) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const { theme, setTheme } = useTheme();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentCategory = searchParams.get('category');
@@ -51,7 +46,6 @@ export function Navbar({ user, settings }: { user: any; settings: any }) {
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
-    setMounted(true);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -135,14 +129,8 @@ export function Navbar({ user, settings }: { user: any; settings: any }) {
 
         <div className="h-4 w-[1px] bg-white/10 hidden md:block" />
 
-        {/* Theme Toggle & Auth Actions */}
+        {/* Auth Actions */}
         <div className="hidden md:flex items-center gap-6">
-          <button
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="p-2 rounded-full bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition-colors"
-          >
-            {mounted && (theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />)}
-          </button>
 
           {user ? (
             <div className="flex items-center gap-4">

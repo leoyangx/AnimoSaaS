@@ -83,7 +83,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body
         className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} font-sans antialiased min-h-screen bg-zinc-950`}
       >
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" disableTransitionOnChange>
           <div className="cyber-bg" />
           <Toaster position="top-center" richColors />
           <div className="relative z-10">{children}</div>

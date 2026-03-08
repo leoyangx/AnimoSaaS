@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { errorResponse, successResponse } from '@/lib/api-response';
+import { errorResponse, successResponse, validationErrorResponse } from '@/lib/api-response';
 import { clearTenantCache } from '@/lib/tenant';
 import { recalculateQuota } from '@/lib/quota';
+import { tenantUpdateSchema } from '@/lib/validators';
 
 // 获取单个租户详情
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -31,7 +32,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     // 获取管理员列表
     const admins = await prisma.user.findMany({
-      where: { tenantId: id, role: 'admin' },
+      where: { tenantId: id, role: 'ADMIN' },
       select: { id: true, email: true, lastLogin: true, createdAt: true },
     });
 
@@ -84,17 +85,24 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const { id } = await params;
     const body = await req.json();
 
+    // Zod 验证
+    const validationResult = tenantUpdateSchema.safeParse(body);
+    if (!validationResult.success) {
+      return validationErrorResponse(validationResult.error);
+    }
+    const validated = validationResult.data;
+
     const tenant = await prisma.tenant.findUnique({ where: { id } });
     if (!tenant) {
       return errorResponse('租户不存在', 404);
     }
 
     const updateData: any = {};
-    if (body.name !== undefined) updateData.name = body.name;
-    if (body.plan !== undefined) updateData.plan = body.plan;
-    if (body.status !== undefined) updateData.status = body.status;
-    if (body.domain !== undefined) updateData.domain = body.domain || null;
-    if (body.settings !== undefined) updateData.settings = body.settings;
+    if (validated.name !== undefined) updateData.name = validated.name;
+    if (validated.plan !== undefined) updateData.plan = validated.plan;
+    if (validated.status !== undefined) updateData.status = validated.status;
+    if (validated.domain !== undefined) updateData.domain = validated.domain || null;
+    if (validated.settings !== undefined) updateData.settings = validated.settings;
 
     // 更新租户
     const updated = await prisma.tenant.update({
@@ -104,14 +112,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     // 更新配额
     if (
-      body.maxUsers !== undefined ||
-      body.maxAssets !== undefined ||
-      body.maxStorage !== undefined
+      validated.maxUsers !== undefined ||
+      validated.maxAssets !== undefined ||
+      validated.maxStorage !== undefined
     ) {
       const quotaUpdate: any = {};
-      if (body.maxUsers !== undefined) quotaUpdate.maxUsers = body.maxUsers;
-      if (body.maxAssets !== undefined) quotaUpdate.maxAssets = body.maxAssets;
-      if (body.maxStorage !== undefined) quotaUpdate.maxStorage = BigInt(body.maxStorage);
+      if (validated.maxUsers !== undefined) quotaUpdate.maxUsers = validated.maxUsers;
+      if (validated.maxAssets !== undefined) quotaUpdate.maxAssets = validated.maxAssets;
+      if (validated.maxStorage !== undefined) quotaUpdate.maxStorage = BigInt(validated.maxStorage);
 
       await prisma.tenantQuota.upsert({
         where: { tenantId: id },
@@ -124,7 +132,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     // 如果请求重新计算配额
-    if (body.recalculateQuota) {
+    if (validated.recalculateQuota) {
       await recalculateQuota(id);
     }
 

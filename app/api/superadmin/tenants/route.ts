@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { errorResponse, successResponse } from '@/lib/api-response';
+import { errorResponse, successResponse, validationErrorResponse } from '@/lib/api-response';
+import { tenantCreateSchema } from '@/lib/validators';
 
 // 获取所有租户列表
 export async function GET() {
@@ -52,16 +53,14 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { name, slug, plan, domain, maxUsers, maxAssets, maxStorage } = body;
 
-    if (!name || !slug) {
-      return errorResponse('租户名称和标识符不能为空', 400);
+    // Zod 输入验证
+    const validationResult = tenantCreateSchema.safeParse(body);
+    if (!validationResult.success) {
+      return validationErrorResponse(validationResult.error);
     }
 
-    // 验证 slug 格式
-    if (!/^[a-z0-9-]+$/.test(slug)) {
-      return errorResponse('标识符只能包含小写字母、数字和连字符', 400);
-    }
+    const { name, slug, plan, domain, maxUsers, maxAssets, maxStorage } = validationResult.data;
 
     // 检查 slug 唯一性
     const existing = await prisma.tenant.findUnique({ where: { slug } });
@@ -82,13 +81,13 @@ export async function POST(req: Request) {
       data: {
         name,
         slug,
-        plan: plan || 'free',
+        plan,
         domain: domain || null,
         quota: {
           create: {
-            maxUsers: maxUsers || 10,
-            maxAssets: maxAssets || 100,
-            maxStorage: BigInt(maxStorage || 1073741824), // 默认 1GB
+            maxUsers,
+            maxAssets,
+            maxStorage: BigInt(maxStorage),
           },
         },
       },

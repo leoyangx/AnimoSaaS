@@ -99,7 +99,7 @@ export default async function Home({
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <Link
                 href="#assets"
-                className="px-8 py-4 bg-brand-primary text-black font-black rounded-full hover:scale-105 transition-transform shadow-[0_0_30px_rgba(0,255,136,0.3)]"
+                className="brand-button px-8 py-4 font-black rounded-full hover:scale-105 transition-transform shadow-[0_0_30px_rgba(0,255,136,0.3)]"
               >
                 浏览素材库
               </Link>

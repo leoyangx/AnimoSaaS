@@ -336,7 +336,14 @@ export default function AdminDashboard({
             </button>
           </div>
           <div className="space-y-6">
-            {users.slice(0, 5).map((user: any) => (
+            {users.length === 0 ? (
+              <div className="text-center py-8">
+                <Users size={32} className="mx-auto text-zinc-700 mb-3" />
+                <p className="text-zinc-500 text-sm">暂无注册学员</p>
+                <p className="text-zinc-600 text-xs mt-1">生成邀请码后分享给学员即可注册</p>
+              </div>
+            ) : (
+              users.slice(0, 5).map((user: any) => (
               <div key={user.id} className="flex items-center justify-between group">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 flex items-center justify-center text-zinc-400 font-bold group-hover:border-brand-primary/30 transition-all">
@@ -363,7 +370,8 @@ export default function AdminDashboard({
                   </button>
                 </div>
               </div>
-            ))}
+            ))
+            )}
           </div>
         </div>
 
@@ -382,7 +390,14 @@ export default function AdminDashboard({
             </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {codes.slice(0, 6).map((code: any) => (
+            {codes.length === 0 ? (
+              <div className="col-span-2 text-center py-8">
+                <Key size={32} className="mx-auto text-zinc-700 mb-3" />
+                <p className="text-zinc-500 text-sm">暂无邀请码</p>
+                <p className="text-zinc-600 text-xs mt-1">前往邀请码管理页面生成新的邀请码</p>
+              </div>
+            ) : (
+              codes.slice(0, 6).map((code: any) => (
               <div
                 key={code.code}
                 className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all group"
@@ -412,7 +427,8 @@ export default function AdminDashboard({
                   </div>
                 )}
               </div>
-            ))}
+            ))
+            )}
           </div>
         </div>
       </div>

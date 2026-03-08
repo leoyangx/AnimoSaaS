@@ -141,6 +141,34 @@ export const invitationCodeGenerateSchema = z.object({
   count: z.number().int().min(1, '数量至少为1').max(100, '单次最多生成100个'),
 });
 
+// ==================== 租户管理验证器 ====================
+
+export const tenantCreateSchema = z.object({
+  name: z.string().min(1, '租户名称不能为空').max(100, '租户名称过长'),
+  slug: z
+    .string()
+    .min(1, '标识符不能为空')
+    .max(50, '标识符过长')
+    .regex(/^[a-z0-9-]+$/, '标识符只能包含小写字母、数字和连字符'),
+  plan: z.enum(['free', 'basic', 'pro', 'enterprise']).default('free'),
+  domain: z.string().max(253, '域名过长').nullable().optional(),
+  maxUsers: z.number().int().min(0).default(10),
+  maxAssets: z.number().int().min(0).default(100),
+  maxStorage: z.number().int().min(0).default(1073741824),
+});
+
+export const tenantUpdateSchema = z.object({
+  name: z.string().min(1, '租户名称不能为空').max(100, '租户名称过长').optional(),
+  plan: z.enum(['free', 'basic', 'pro', 'enterprise']).optional(),
+  status: z.enum(['active', 'suspended', 'deleted']).optional(),
+  domain: z.string().max(253, '域名过长').nullable().optional(),
+  settings: z.record(z.string(), z.unknown()).optional(),
+  maxUsers: z.number().int().min(0).optional(),
+  maxAssets: z.number().int().min(0).optional(),
+  maxStorage: z.number().int().min(0).optional(),
+  recalculateQuota: z.boolean().optional(),
+});
+
 // ==================== 类型导出 ====================
 
 export type LoginInput = z.infer<typeof loginSchema>;
@@ -156,3 +184,5 @@ export type FileUploadInput = z.infer<typeof fileUploadSchema>;
 export type SiteConfigInput = z.infer<typeof siteConfigSchema>;
 export type SiteConfigUpdateInput = z.infer<typeof siteConfigUpdateSchema>;
 export type InvitationCodeGenerateInput = z.infer<typeof invitationCodeGenerateSchema>;
+export type TenantCreateInput = z.infer<typeof tenantCreateSchema>;
+export type TenantUpdateInput = z.infer<typeof tenantUpdateSchema>;

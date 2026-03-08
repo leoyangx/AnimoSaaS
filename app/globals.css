@@ -40,6 +40,22 @@ body {
   z-index: -1;
 }
 
+/* Brand button with guaranteed contrast */
+.brand-button {
+  background: var(--brand-primary);
+  color: #000;
+  position: relative;
+}
+
+.brand-button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(rgba(255,255,255,0.1), transparent);
+  pointer-events: none;
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

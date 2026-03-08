@@ -13,7 +13,7 @@ export async function GET() {
   response.cookies.set(CSRF_COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production' && process.env.DISABLE_SECURE_COOKIE !== 'true',
-    sameSite: 'strict',
+    sameSite: 'lax',
     maxAge: 60 * 60, // 1 hour
     path: '/',
   });

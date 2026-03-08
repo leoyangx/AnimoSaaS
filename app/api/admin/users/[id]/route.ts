@@ -2,7 +2,8 @@ import { getSession } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { getTenantIdFromRequest } from '@/lib/tenant-context';
 import { decrementQuota } from '@/lib/quota';
-import { errorResponse, successResponse } from '@/lib/api-response';
+import { userUpdateSchema } from '@/lib/validators';
+import { errorResponse, successResponse, validationErrorResponse } from '@/lib/api-response';
 import bcrypt from 'bcryptjs';
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -14,7 +15,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const { id } = await params;
     const tenantId = getTenantIdFromRequest(req);
-    const { disabled, password } = await req.json();
+    const body = await req.json();
+
+    // Zod 输入验证
+    const validationResult = userUpdateSchema.safeParse(body);
+    if (!validationResult.success) {
+      return validationErrorResponse(validationResult.error);
+    }
+
+    const { disabled, password } = validationResult.data;
 
     const updateData: any = {};
     if (disabled !== undefined) updateData.disabled = disabled;

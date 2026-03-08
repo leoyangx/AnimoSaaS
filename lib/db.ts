@@ -161,7 +161,7 @@ export const db = {
     delete: async (id: string, tenantId: string) => {
       const asset = await prisma.asset.findFirst({ where: { id, tenantId } });
       if (!asset) throw new Error('资产不存在或无权操作');
-      await prisma.asset.delete({ where: { id } });
+      await prisma.asset.update({ where: { id }, data: { deletedAt: new Date() } });
     },
   },
   categories: {
@@ -227,7 +227,7 @@ export const db = {
     delete: async (id: string, tenantId: string) => {
       const category = await prisma.assetCategory.findFirst({ where: { id, tenantId } });
       if (!category) throw new Error('分类不存在或无权操作');
-      await prisma.assetCategory.delete({ where: { id } });
+      await prisma.assetCategory.update({ where: { id }, data: { deletedAt: new Date() } });
       categoryCache.deleteByPrefix(`categories:`);
     },
   },
@@ -300,7 +300,7 @@ export const db = {
     delete: async (id: string, tenantId: string) => {
       const user = await prisma.user.findFirst({ where: { id, tenantId } });
       if (!user) throw new Error('用户不存在或无权操作');
-      await prisma.user.delete({ where: { id } });
+      await prisma.user.update({ where: { id }, data: { deletedAt: new Date() } });
     },
   },
   codes: {

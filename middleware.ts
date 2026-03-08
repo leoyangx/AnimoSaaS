@@ -180,7 +180,9 @@ export async function middleware(request: NextRequest) {
       );
     }
 
-    return NextResponse.next();
+    // Superadmin routes don't need tenant headers, pass through
+    const saHeaders = new Headers(request.headers);
+    return NextResponse.next({ request: { headers: saHeaders } });
   }
 
   // ========== 管理员路由保护 ==========

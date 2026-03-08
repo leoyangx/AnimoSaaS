@@ -290,7 +290,7 @@ export default function ApiKeysPage() {
             <span className="text-brand-primary">ak_your_key_here</span>&quot; \
           </p>
           <p className="pl-5">
-            {typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}
+            {'https://your-domain.com'}
             /api/v1/assets
           </p>
         </div>

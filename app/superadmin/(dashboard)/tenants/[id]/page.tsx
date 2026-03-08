@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, RefreshCw, Trash2, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Save, RefreshCw, Trash2, RotateCcw, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 
 interface TenantDetail {
@@ -62,6 +62,10 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
     maxAssets: 100,
     maxStorage: 1073741824,
   });
+
+  const [showAddAdmin, setShowAddAdmin] = useState(false);
+  const [adminForm, setAdminForm] = useState({ email: '', password: '' });
+  const [creatingAdmin, setCreatingAdmin] = useState(false);
 
   useEffect(() => {
     params.then((p) => setTenantId(p.id));
@@ -153,6 +157,32 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
       }
     } catch {
       setMessage({ type: 'error', text: '网络错误' });
+    }
+  };
+
+  const handleCreateAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreatingAdmin(true);
+    setMessage({ type: '', text: '' });
+    try {
+      const res = await fetch(`/api/superadmin/tenants/${tenantId}/admins`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(adminForm),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage({ type: 'success', text: data.message || '管理员创建成功' });
+        setAdminForm({ email: '', password: '' });
+        setShowAddAdmin(false);
+        fetchTenant();
+      } else {
+        setMessage({ type: 'error', text: data.error || '创建失败' });
+      }
+    } catch {
+      setMessage({ type: 'error', text: '网络错误' });
+    } finally {
+      setCreatingAdmin(false);
     }
   };
 
@@ -419,9 +449,61 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
 
       {/* Admins */}
       <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl">
-        <div className="p-5 border-b border-zinc-800">
+        <div className="p-5 border-b border-zinc-800 flex items-center justify-between">
           <h2 className="text-lg font-bold text-white">管理员</h2>
+          <button
+            onClick={() => setShowAddAdmin(!showAddAdmin)}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs text-amber-500 hover:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 rounded-lg transition-colors font-medium"
+          >
+            <UserPlus size={12} />
+            添加管理员
+          </button>
         </div>
+        {showAddAdmin && (
+          <form onSubmit={handleCreateAdmin} className="p-5 border-b border-zinc-800 space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1">邮箱 *</label>
+                <input
+                  type="email"
+                  value={adminForm.email}
+                  onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500/50"
+                  placeholder="admin@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1">密码 *</label>
+                <input
+                  type="password"
+                  value={adminForm.password}
+                  onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
+                  required
+                  minLength={8}
+                  className="w-full px-3 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500/50"
+                  placeholder="至少8位，含大小写字母和数字"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowAddAdmin(false)}
+                className="px-3 py-1.5 text-xs text-zinc-400 hover:text-white transition-colors"
+              >
+                取消
+              </button>
+              <button
+                type="submit"
+                disabled={creatingAdmin}
+                className="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-lg text-xs transition-colors disabled:opacity-50"
+              >
+                {creatingAdmin ? '创建中...' : '确认创建'}
+              </button>
+            </div>
+          </form>
+        )}
         <div className="divide-y divide-zinc-800">
           {tenant.admins.map((admin) => (
             <div key={admin.id} className="flex items-center justify-between p-4">

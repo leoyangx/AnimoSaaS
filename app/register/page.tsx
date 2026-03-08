@@ -31,7 +31,7 @@ export default function RegisterPage() {
         router.push('/');
         router.refresh();
       } else {
-        setError(data.error);
+        setError(data.error || '注册失败');
       }
     } catch (e) {
       setError('连接服务器失败');
