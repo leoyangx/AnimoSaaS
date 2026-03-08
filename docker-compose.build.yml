@@ -1,0 +1,11 @@
+# 本地构建覆盖文件
+# 用法: docker compose -f docker-compose.yml -f docker-compose.build.yml build
+# 或通过 ./animosaas --build-local 自动使用
+services:
+  app:
+    image: animosaas-app:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=production

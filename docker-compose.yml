@@ -25,12 +25,9 @@ services:
       - animosaas-network
 
   # Next.js 应用
+  # 默认使用预构建镜像；本地构建请使用: docker compose -f docker-compose.yml -f docker-compose.build.yml build
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        - NODE_ENV=production
+    image: ghcr.io/leoyangx/animosaas:latest
     container_name: animosaas-app
     restart: unless-stopped
     depends_on:
