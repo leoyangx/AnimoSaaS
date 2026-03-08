@@ -44,7 +44,7 @@ readonly DOCKER_IMAGE="ghcr.io/leoyangx/animosaas:latest"
 # When run via `curl ... | bash`, BASH_SOURCE is empty.
 # Clone the repo first, then re-execute the local copy.
 
-if [[ -z "${BASH_SOURCE[0]:-}" ]] || [[ "${BASH_SOURCE[0]}" == "bash" ]] || [[ "${BASH_SOURCE[0]}" == "/dev/stdin" ]] || [[ "${BASH_SOURCE[0]}" == "-" ]]; then
+if [[ -z "${BASH_SOURCE[0]:-}" ]] || [[ "${BASH_SOURCE[0]}" == "bash" ]] || [[ "${BASH_SOURCE[0]}" == "/dev/stdin" ]] || [[ "${BASH_SOURCE[0]}" == "-" ]] || [[ "${BASH_SOURCE[0]}" == /dev/fd/* ]] || [[ "${BASH_SOURCE[0]}" == /proc/*/fd/* ]]; then
   _PIPED=1
 
   # Minimal color for bootstrap phase
