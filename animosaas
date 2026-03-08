@@ -190,7 +190,7 @@ spinner_stop() {
   fi
 }
 
-trap 'spinner_stop 2>/dev/null; exit' INT TERM
+trap 'spinner_stop 2>/dev/null' INT TERM EXIT
 
 # ══════════════════════════════════════════════════════════════
 #  UTILITIES
@@ -206,12 +206,16 @@ generate_secret() {
 
 generate_password() {
   local len="${1:-12}"
-  local pass=""
-  if command -v openssl &>/dev/null; then
-    pass=$(openssl rand -base64 48 | tr -dc 'a-zA-Z0-9!@#$%' | head -c "$len")
-  else
-    pass=$(head -c 48 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9!@#$%' | head -c "$len")
-  fi
+  local pass="" attempts=0
+  while [[ ${#pass} -lt $len ]] && [[ $attempts -lt 5 ]]; do
+    if command -v openssl &>/dev/null; then
+      pass=$(openssl rand -base64 64 | tr -dc 'a-zA-Z0-9!@#$%' | head -c "$len")
+    else
+      pass=$(head -c 64 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9!@#$%' | head -c "$len")
+    fi
+    attempts=$((attempts + 1))
+  done
+  [[ ${#pass} -lt $len ]] && pass="AnimoSaaS$(date +%s | tail -c "$len")"
   echo "$pass"
 }
 
@@ -248,13 +252,13 @@ confirm() {
 
 read_env_value() {
   local key="$1" file="${2:-.env}"
-  [[ -f "$file" ]] && grep -E "^${key}=" "$file" 2>/dev/null | head -1 | sed 's/^[^=]*=//' | sed "s/^[\"']//g" | sed "s/[\"']$//g" || true
+  [[ -f "$file" ]] && grep -E "^${key}=" "$file" 2>/dev/null | head -1 | sed "s/^[^=]*=//; s/^[\"']//; s/[\"']$//" || true
 }
 
 set_env_value() {
   local key="$1" value="$2" file="${3:-.env}"
   if grep -qE "^${key}=" "$file" 2>/dev/null; then
-    sed -i "s|^${key}=.*|${key}=${value}|" "$file"
+    sed -i "s#^${key}=.*#${key}=${value}#" "$file"
   else
     echo "${key}=${value}" >> "$file"
   fi
@@ -344,7 +348,7 @@ check_prerequisites() {
   # ── OS Info ──
   local os_info=""
   if [[ -f /etc/os-release ]]; then
-    os_info=$(. /etc/os-release && echo "${PRETTY_NAME:-$ID}")
+    os_info=$(set +eu; . /etc/os-release 2>/dev/null; echo "${PRETTY_NAME:-${ID:-unknown}}")
   else
     os_info="$(uname -s) $(uname -r)"
   fi
@@ -392,8 +396,23 @@ check_prerequisites() {
   fi
 
   # ── Disk space ──
-  local available_mb
-  available_mb=$(df -m "$(pwd)" 2>/dev/null | awk 'NR==2{print $4}' || echo "0")
+  # df may wrap long device paths across multiple lines, breaking NR==2 parsing.
+  # Strategy: try --output=avail first (coreutils 8.21+), fallback to robust awk.
+  local available_mb=""
+  # Method 1: df --output=avail (clean single-column output, no wrapping issues)
+  available_mb=$(df -m --output=avail "$(pwd)" 2>/dev/null | awk 'NR==2{print $1}')
+  # Method 2: fallback for older coreutils — concatenate continuation lines
+  if [[ -z "$available_mb" ]] || ! [[ "$available_mb" =~ ^[0-9]+$ ]]; then
+    available_mb=$(df -m "$(pwd)" 2>/dev/null | awk '
+      NR==1{next}
+      {line=line $0}
+      NF>=4{split(line,a); print a[4]; exit}
+    ')
+  fi
+  available_mb="${available_mb:-0}"
+  # Strip non-numeric chars (safety)
+  available_mb="${available_mb//[!0-9]/}"
+  available_mb="${available_mb:-0}"
   if [[ "$available_mb" -lt "$MIN_DISK_MB" ]] 2>/dev/null; then
     warn "磁盘空间不足: 剩余 ${available_mb}MB（建议 >= ${MIN_DISK_MB}MB）"
   else
@@ -583,10 +602,16 @@ deploy() {
   step "构建" "正在构建 Docker 镜像..."
 
   spinner_start "正在构建镜像（首次构建可能需要几分钟）..."
-  local build_output compose_env=""
-  [[ -n "$_WIZARD_SUPER_PASSWORD" ]] && compose_env="SUPER_ADMIN_PASSWORD=${_WIZARD_SUPER_PASSWORD}"
+  local build_output
 
-  if build_output=$(env $compose_env $COMPOSE_CMD build --no-cache 2>&1); then
+  local build_cmd
+  if [[ -n "$_WIZARD_SUPER_PASSWORD" ]]; then
+    build_cmd="SUPER_ADMIN_PASSWORD=${_WIZARD_SUPER_PASSWORD} $COMPOSE_CMD build --no-cache"
+  else
+    build_cmd="$COMPOSE_CMD build --no-cache"
+  fi
+
+  if build_output=$(eval "$build_cmd" 2>&1); then
     spinner_stop
     success "镜像构建完成"
   else
@@ -996,17 +1021,15 @@ do_change_password() {
 
   info "正在更新超级管理员密码..."
 
-  # Escape single quotes for JS string
-  local escaped_password="${new_password//\'/\'\\\'\'}"
-
+  # Use docker exec -e to pass password via env var (avoids shell escaping issues)
   local update_result
-  update_result=$(docker exec "$CONTAINER_APP" node -e "
+  update_result=$(docker exec -e "ANIMOSAAS_NEW_PW=${new_password}" "$CONTAINER_APP" node -e "
     const bcrypt = require('bcryptjs');
     const { PrismaClient } = require('@prisma/client');
     const prisma = new PrismaClient();
     (async () => {
       try {
-        const hash = await bcrypt.hash('${escaped_password}', 12);
+        const hash = await bcrypt.hash(process.env.ANIMOSAAS_NEW_PW, 12);
         const result = await prisma.superAdmin.updateMany({
           data: { password: hash }
         });
