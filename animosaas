@@ -396,21 +396,14 @@ check_prerequisites() {
   fi
 
   # ── Disk space ──
-  # df may wrap long device paths across multiple lines, breaking NR==2 parsing.
-  # Strategy: try --output=avail first (coreutils 8.21+), fallback to robust awk.
+  # df may wrap long device paths across 2 lines (e.g. /dev/mapper/xxx).
+  # Use df -P (POSIX mode) to force single-line output per filesystem.
   local available_mb=""
-  # Method 1: df --output=avail (clean single-column output, no wrapping issues)
-  available_mb=$(df -m --output=avail "$(pwd)" 2>/dev/null | awk 'NR==2{print $1}')
-  # Method 2: fallback for older coreutils — concatenate continuation lines
+  available_mb=$(df -Pm "$(pwd)" 2>/dev/null | awk 'NR==2{print $4}') || true
+  # Fallback: try --output=avail if -P didn't work
   if [[ -z "$available_mb" ]] || ! [[ "$available_mb" =~ ^[0-9]+$ ]]; then
-    available_mb=$(df -m "$(pwd)" 2>/dev/null | awk '
-      NR==1{next}
-      {line=line $0}
-      NF>=4{split(line,a); print a[4]; exit}
-    ')
+    available_mb=$(df -m --output=avail "$(pwd)" 2>/dev/null | awk 'NR==2{print $1}') || true
   fi
-  available_mb="${available_mb:-0}"
-  # Strip non-numeric chars (safety)
   available_mb="${available_mb//[!0-9]/}"
   available_mb="${available_mb:-0}"
   if [[ "$available_mb" -lt "$MIN_DISK_MB" ]] 2>/dev/null; then
