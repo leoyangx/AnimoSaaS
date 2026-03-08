@@ -43,9 +43,6 @@ services:
       # JWT 密钥（必须修改）
       JWT_SECRET: ${JWT_SECRET}
 
-      # 管理员密码（必须修改）
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-
       # 多租户配置
       DEFAULT_TENANT_NAME: ${DEFAULT_TENANT_NAME:-Default}
       SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-superadmin@animosaas.com}
