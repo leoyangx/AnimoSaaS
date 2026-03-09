@@ -10,11 +10,13 @@ import {
   Settings,
   Activity,
   AlertTriangle,
+  Users,
 } from 'lucide-react';
 
 const navItems = [
   { label: '仪表板', href: '/superadmin', icon: LayoutDashboard },
   { label: '租户管理', href: '/superadmin/tenants', icon: Building2 },
+  { label: '用户管理', href: '/superadmin/users', icon: Users },
   { label: '系统监控', href: '/superadmin/monitoring', icon: Activity },
 ];
 

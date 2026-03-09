@@ -1,20 +1,7 @@
-import { getTenantIdFromRequest } from '@/lib/tenant-context';
 import { successResponse, errorResponse } from '@/lib/api-response';
 import { checkApiKeyPermission } from '@/lib/api-keys';
+import { authenticateApiKey } from '@/lib/api-v1-auth';
 import { prisma } from '@/lib/prisma';
-
-/**
- * 从请求头中提取 API Key 权限
- */
-function getPermissions(req: Request): string[] {
-  const raw = req.headers.get('x-api-key-permissions');
-  if (!raw) return [];
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
 
 /**
  * GET /api/v1/assets — 获取资产列表
@@ -28,8 +15,10 @@ function getPermissions(req: Request): string[] {
  */
 export async function GET(req: Request) {
   try {
-    const tenantId = getTenantIdFromRequest(req);
-    const permissions = getPermissions(req);
+    const auth = await authenticateApiKey(req);
+    if ('error' in auth) return auth.error;
+
+    const { tenantId, permissions } = auth.context;
 
     if (!checkApiKeyPermission(permissions, 'assets:read')) {
       return errorResponse('API Key 缺少 assets:read 权限', 403);

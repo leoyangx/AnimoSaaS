@@ -18,22 +18,33 @@ export function CodeManager({ initialCodes }: { initialCodes: any[] }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ count: 20 }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setCodes(data.codes);
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCodes(data.data);
         router.refresh();
         alert('✅ 批量生成成功！');
       } else {
-        const data = await res.json();
         alert(`❌ 生成失败: ${data.error || '未知错误'}`);
       }
+    } catch (error) {
+      alert('❌ 网络错误，请重试');
     } finally {
       setLoading(false);
     }
   };
 
   const exportCodes = () => {
-    window.open('/api/admin/codes', '_blank');
+    // 导出为 TXT 格式（纯文本，每行一个邀请码）
+    const codesText = codes.map((c: any) => c.code).join('\n');
+    const blob = new Blob([codesText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `邀请码_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const deleteCode = async (code: string) => {

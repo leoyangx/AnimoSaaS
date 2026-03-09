@@ -41,16 +41,8 @@ export default function AdminDashboard({
 }: any) {
   const router = useRouter();
 
-  // Use passed chart data or fallback to mock if not provided
-  const chartData = initialChartData || [
-    { name: '周一', downloads: 400, users: 240 },
-    { name: '周二', downloads: 300, users: 139 },
-    { name: '周三', downloads: 200, users: 980 },
-    { name: '周四', downloads: 278, users: 390 },
-    { name: '周五', downloads: 189, users: 480 },
-    { name: '周六', downloads: 239, users: 380 },
-    { name: '周日', downloads: 349, users: 430 },
-  ];
+  // Use real chart data from server
+  const chartData = initialChartData;
 
   return (
     <div className="space-y-10 pb-20">
@@ -96,7 +88,6 @@ export default function AdminDashboard({
             icon: Users,
             color: 'text-blue-400',
             bg: 'bg-blue-400/10',
-            growth: '+12%',
           },
           {
             label: '总素材',
@@ -104,7 +95,6 @@ export default function AdminDashboard({
             icon: Package,
             color: 'text-purple-400',
             bg: 'bg-purple-400/10',
-            growth: '+5',
           },
           {
             label: '累计下载',
@@ -112,7 +102,6 @@ export default function AdminDashboard({
             icon: Download,
             color: 'text-emerald-400',
             bg: 'bg-emerald-400/10',
-            growth: '+28%',
           },
           {
             label: '待用邀请码',
@@ -120,7 +109,6 @@ export default function AdminDashboard({
             icon: Key,
             color: 'text-orange-400',
             bg: 'bg-orange-400/10',
-            growth: '-2',
           },
         ].map((stat, i) => (
           <motion.div
@@ -130,18 +118,6 @@ export default function AdminDashboard({
             transition={{ delay: i * 0.1 }}
             className="glass-card p-6 group relative overflow-hidden"
           >
-            <div className="absolute top-0 right-0 p-4">
-              <span
-                className={cn(
-                  'text-[10px] font-bold px-2 py-0.5 rounded-full',
-                  stat.growth.startsWith('+')
-                    ? 'bg-emerald-500/10 text-emerald-400'
-                    : 'bg-red-500/10 text-red-400'
-                )}
-              >
-                {stat.growth}
-              </span>
-            </div>
             <div className="flex items-center justify-between mb-4">
               <div className={cn('p-3 rounded-xl transition-colors', stat.bg, stat.color)}>
                 <stat.icon size={20} />

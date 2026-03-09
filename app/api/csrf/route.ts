@@ -11,7 +11,7 @@ export async function GET() {
   const response = NextResponse.json({ csrfToken: token });
 
   response.cookies.set(CSRF_COOKIE_NAME, token, {
-    httpOnly: true,
+    httpOnly: false,
     secure: process.env.NODE_ENV === 'production' && process.env.DISABLE_SECURE_COOKIE !== 'true',
     sameSite: 'lax',
     maxAge: 60 * 60, // 1 hour

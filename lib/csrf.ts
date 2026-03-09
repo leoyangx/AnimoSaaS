@@ -14,6 +14,10 @@ export function generateCsrfToken(): string {
 /**
  * Double Submit Cookie 验证
  * 比较 cookie 中的 token 与 header 中的 token 是否一致
+ *
+ * 使用常量时间比较防止 timing attack。
+ * 如果 crypto.timingSafeEqual 不可用（部分 Next.js runtime），
+ * 回退到手动常量时间比较。
  */
 export function validateCsrfDouble(
   cookieToken: string | undefined,
@@ -23,11 +27,17 @@ export function validateCsrfDouble(
     return false;
   }
 
-  try {
-    return crypto.timingSafeEqual(Buffer.from(cookieToken), Buffer.from(headerToken));
-  } catch {
+  if (cookieToken.length !== headerToken.length) {
     return false;
   }
+
+  // 常量时间字符串比较（避免 timing attack）
+  // 不依赖 crypto.timingSafeEqual 和 Buffer，兼容所有 Next.js runtime
+  let mismatch = 0;
+  for (let i = 0; i < cookieToken.length; i++) {
+    mismatch |= cookieToken.charCodeAt(i) ^ headerToken.charCodeAt(i);
+  }
+  return mismatch === 0;
 }
 
 /**

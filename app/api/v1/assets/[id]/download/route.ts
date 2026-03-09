@@ -1,25 +1,17 @@
-import { getTenantIdFromRequest } from '@/lib/tenant-context';
 import { successResponse, errorResponse } from '@/lib/api-response';
 import { checkApiKeyPermission } from '@/lib/api-keys';
+import { authenticateApiKey } from '@/lib/api-v1-auth';
 import { prisma } from '@/lib/prisma';
-
-function getPermissions(req: Request): string[] {
-  const raw = req.headers.get('x-api-key-permissions');
-  if (!raw) return [];
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
 
 /**
  * GET /api/v1/assets/[id]/download — 获取资产下载链接
  */
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const tenantId = getTenantIdFromRequest(req);
-    const permissions = getPermissions(req);
+    const auth = await authenticateApiKey(req);
+    if ('error' in auth) return auth.error;
+
+    const { tenantId, apiKeyId, permissions } = auth.context;
     const { id } = await params;
 
     if (!checkApiKeyPermission(permissions, 'download:read')) {
@@ -47,7 +39,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       data: { downloadCount: { increment: 1 } },
     });
 
-    const apiKeyId = req.headers.get('x-api-key-id') || 'api-key';
     await prisma.downloadLog.create({
       data: {
         assetId: id,

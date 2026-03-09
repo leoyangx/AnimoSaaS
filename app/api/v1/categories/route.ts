@@ -1,25 +1,17 @@
-import { getTenantIdFromRequest } from '@/lib/tenant-context';
 import { successResponse, errorResponse } from '@/lib/api-response';
 import { checkApiKeyPermission } from '@/lib/api-keys';
+import { authenticateApiKey } from '@/lib/api-v1-auth';
 import { prisma } from '@/lib/prisma';
-
-function getPermissions(req: Request): string[] {
-  const raw = req.headers.get('x-api-key-permissions');
-  if (!raw) return [];
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
 
 /**
  * GET /api/v1/categories — 获取分类列表
  */
 export async function GET(req: Request) {
   try {
-    const tenantId = getTenantIdFromRequest(req);
-    const permissions = getPermissions(req);
+    const auth = await authenticateApiKey(req);
+    if ('error' in auth) return auth.error;
+
+    const { tenantId, permissions } = auth.context;
 
     if (!checkApiKeyPermission(permissions, 'categories:read')) {
       return errorResponse('API Key 缺少 categories:read 权限', 403);

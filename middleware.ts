@@ -1,30 +1,23 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifyToken } from '@/lib/auth';
-import { resolveTenantSlug, getTenantBySlug } from '@/lib/tenant';
-import { verifyApiKey } from '@/lib/api-keys';
+import { resolveTenantSlug } from '@/lib/tenant';
 import { validateCsrfDouble, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/lib/csrf';
 
 /**
- * 强制使用 Node.js Runtime（jsonwebtoken 不支持 Edge Runtime）
- */
-export const runtime = 'nodejs';
-
-/**
- * Next.js 中间件 - 统一租户识别、认证和授权
+ * Next.js 中间件 - 认证、CSRF 防护、租户 slug 透传
+ *
+ * 重要：Next.js middleware 始终运行在 Edge Runtime，不能使用 Prisma。
+ * 租户 DB 查询由下游 route handler 完成（通过 getTenantId() / getTenantIdFromRequest()）。
+ * middleware 只负责：解析 slug → 注入 header → 认证 → CSRF 校验。
  */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // ========== 租户识别 ==========
-  // 超级管理员路由不需要租户上下文
+  // ========== 路由分类 ==========
   const isSuperAdminRoute =
     pathname.startsWith('/api/superadmin') || pathname.startsWith('/superadmin');
-  const isHealthRoute = pathname.startsWith('/api/health');
   const isV1Route = pathname.startsWith('/api/v1');
-
-  let tenantId = '';
-  let tenantSlug = '';
 
   // ========== API Key 认证（/api/v1/*）==========
   if (isV1Route) {
@@ -41,7 +34,7 @@ export async function middleware(request: NextRequest) {
       );
     }
 
-    const apiKeyStr = authHeader.substring(7); // 去掉 "Bearer "
+    const apiKeyStr = authHeader.substring(7);
 
     if (!apiKeyStr.startsWith('ak_')) {
       return NextResponse.json(
@@ -50,90 +43,25 @@ export async function middleware(request: NextRequest) {
       );
     }
 
-    const apiKey = await verifyApiKey(apiKeyStr);
-
-    if (!apiKey) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'API Key 无效、已禁用或已过期',
-          timestamp: new Date().toISOString(),
-        },
-        { status: 401 }
-      );
-    }
-
-    // 检查租户状态
-    const { prisma } = await import('@/lib/prisma');
-    const tenantRecord = await prisma.tenant.findUnique({
-      where: { id: apiKey.tenantId },
-      select: { id: true, slug: true, status: true },
-    });
-
-    if (!tenantRecord || tenantRecord.status !== 'active') {
-      return NextResponse.json(
-        { success: false, error: '租户已被停用', timestamp: new Date().toISOString() },
-        { status: 403 }
-      );
-    }
-
-    // 注入租户 ID 和权限信息到请求头
+    // API Key 验证和租户查询交给 route handler 处理
+    // middleware 只做格式校验，避免在 Edge Runtime 调用 Prisma
     const requestHeaders = new Headers(request.headers);
-    requestHeaders.set('x-tenant-id', apiKey.tenantId);
-    requestHeaders.set('x-tenant-slug', tenantRecord.slug);
-    requestHeaders.set('x-api-key-id', apiKey.id);
-    requestHeaders.set('x-api-key-permissions', JSON.stringify(apiKey.permissions));
+    requestHeaders.set('x-api-key-raw', apiKeyStr);
 
     return NextResponse.next({
       request: { headers: requestHeaders },
     });
   }
 
-  if (!isSuperAdminRoute && !isHealthRoute) {
-    // 解析租户 slug
+  // ========== 租户 slug 解析（不调用 Prisma）==========
+  let tenantSlug = '';
+  if (!isSuperAdminRoute) {
     tenantSlug = resolveTenantSlug(request);
-
-    // 查询租户信息
-    const tenant = await getTenantBySlug(tenantSlug);
-
-    if (!tenant) {
-      // 如果是 API 请求，返回 JSON 错误
-      if (pathname.startsWith('/api/')) {
-        return NextResponse.json(
-          { success: false, error: '租户不存在', timestamp: new Date().toISOString() },
-          { status: 404 }
-        );
-      }
-      // 页面请求，重定向到错误页（或回退到默认租户）
-      const defaultTenant = await getTenantBySlug('default');
-      if (defaultTenant) {
-        tenantId = defaultTenant.id;
-        tenantSlug = defaultTenant.slug;
-      } else {
-        return NextResponse.json(
-          { success: false, error: '系统未初始化', timestamp: new Date().toISOString() },
-          { status: 503 }
-        );
-      }
-    } else if (tenant.status !== 'active') {
-      if (pathname.startsWith('/api/')) {
-        return NextResponse.json(
-          { success: false, error: '租户已被停用', timestamp: new Date().toISOString() },
-          { status: 403 }
-        );
-      }
-      return NextResponse.redirect(new URL('/suspended', request.url));
-    } else {
-      tenantId = tenant.id;
-      tenantSlug = tenant.slug;
-    }
   }
 
   // ========== CSRF 防护 ==========
-  // 对非 API Key 的写操作进行 CSRF 验证（GET/HEAD/OPTIONS 跳过）
   const method = request.method.toUpperCase();
   if (!isV1Route && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
-    // 登录/注册路由豁免 CSRF（用户还没有 token，无法获取 CSRF cookie）
     const isCsrfExempt =
       pathname.startsWith('/api/auth/login') ||
       pathname.startsWith('/api/auth/register') ||
@@ -160,29 +88,35 @@ export async function middleware(request: NextRequest) {
 
     if (!token) {
       return NextResponse.json(
-        { success: false, error: '未授权访问', timestamp: new Date().toISOString() },
+        { success: false, error: '请先登录' },
         { status: 401 }
       );
     }
 
     try {
       const session = await verifyToken(token);
-      if (!session || session.role !== 'superadmin') {
+
+      if (!session) {
         return NextResponse.json(
-          { success: false, error: '权限不足', timestamp: new Date().toISOString() },
+          { success: false, error: '会话已过期' },
+          { status: 401 }
+        );
+      }
+
+      if (session.role !== 'superadmin') {
+        return NextResponse.json(
+          { success: false, error: '权限不足' },
           { status: 403 }
         );
       }
     } catch (error) {
       return NextResponse.json(
-        { success: false, error: 'Token 无效或已过期', timestamp: new Date().toISOString() },
+        { success: false, error: '身份验证失败' },
         { status: 401 }
       );
     }
 
-    // Superadmin routes don't need tenant headers, pass through
-    const saHeaders = new Headers(request.headers);
-    return NextResponse.next({ request: { headers: saHeaders } });
+    return NextResponse.next();
   }
 
   // ========== 管理员路由保护 ==========
@@ -203,6 +137,14 @@ export async function middleware(request: NextRequest) {
           { success: false, error: '权限不足', timestamp: new Date().toISOString() },
           { status: 403 }
         );
+      }
+      // 从 JWT 中提取 tenantId 注入请求头
+      if (session.tenantId) {
+        tenantSlug = tenantSlug || 'default';
+        const requestHeaders = new Headers(request.headers);
+        requestHeaders.set('x-tenant-id', session.tenantId);
+        requestHeaders.set('x-tenant-slug', tenantSlug);
+        return NextResponse.next({ request: { headers: requestHeaders } });
       }
     } catch (error) {
       return NextResponse.json(
@@ -230,6 +172,14 @@ export async function middleware(request: NextRequest) {
           { success: false, error: 'Token 无效或已过期', timestamp: new Date().toISOString() },
           { status: 401 }
         );
+      }
+      // 从 JWT 中提取 tenantId 注入请求头
+      if (session.tenantId) {
+        tenantSlug = tenantSlug || 'default';
+        const requestHeaders = new Headers(request.headers);
+        requestHeaders.set('x-tenant-id', session.tenantId);
+        requestHeaders.set('x-tenant-slug', tenantSlug);
+        return NextResponse.next({ request: { headers: requestHeaders } });
       }
     } catch (error) {
       return NextResponse.json(
@@ -259,6 +209,13 @@ export async function middleware(request: NextRequest) {
           { status: 401 }
         );
       }
+      if (session.tenantId) {
+        tenantSlug = tenantSlug || 'default';
+        const requestHeaders = new Headers(request.headers);
+        requestHeaders.set('x-tenant-id', session.tenantId);
+        requestHeaders.set('x-tenant-slug', tenantSlug);
+        return NextResponse.next({ request: { headers: requestHeaders } });
+      }
     } catch (error) {
       return NextResponse.json(
         { success: false, error: 'Token 无效或已过期', timestamp: new Date().toISOString() },
@@ -267,23 +224,17 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // ========== 注入租户请求头 ==========
-  const response = NextResponse.next();
-
-  if (tenantId) {
-    // 通过 request headers 注入租户信息，供下游 API 路由使用
+  // ========== 注入租户 slug 请求头 ==========
+  if (tenantSlug) {
     const requestHeaders = new Headers(request.headers);
-    requestHeaders.set('x-tenant-id', tenantId);
     requestHeaders.set('x-tenant-slug', tenantSlug);
 
     return NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
+      request: { headers: requestHeaders },
     });
   }
 
-  return response;
+  return NextResponse.next();
 }
 
 /**

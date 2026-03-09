@@ -1,28 +1,35 @@
 /**
  * 租户上下文管理
  *
- * 提供从 Next.js 请求中获取租户信息的便捷方法。
- * 对于 API 路由：租户信息由 middleware 在请求头中注入。
- * 对于页面路由：如果 middleware 未注入，则回退到默认租户。
+ * middleware 注入 x-tenant-slug（始终）和 x-tenant-id（已认证的 admin/user 路由）。
+ * 对于未认证路由（如 login），route handler 自行通过 slug 查询 DB。
  */
 
 import { headers } from 'next/headers';
 
 /**
- * 从当前请求的 headers 中获取租户 ID
- * 如果 middleware 未注入（页面路由），则回退到默认租户
+ * 从当前请求的 headers 中获取租户 ID（用于 Server Component / RSC）
+ * 优先使用 x-tenant-id，否则通过 x-tenant-slug 查询数据库
  */
 export async function getTenantId(): Promise<string> {
   const headerStore = await headers();
+
   const tenantId = headerStore.get('x-tenant-id');
   if (tenantId) return tenantId;
 
-  // 页面路由可能未经过 middleware，回退到默认租户
+  // 通过 slug 查询数据库
+  const slug = headerStore.get('x-tenant-slug') || 'default';
   const { getTenantBySlug } = await import('./tenant');
-  const defaultTenant = await getTenantBySlug('default');
-  if (defaultTenant) return defaultTenant.id;
+  const tenant = await getTenantBySlug(slug);
+  if (tenant) return tenant.id;
 
-  throw new Error('租户上下文未初始化：缺少 X-Tenant-Id 请求头且无默认租户');
+  // 回退到默认租户
+  if (slug !== 'default') {
+    const defaultTenant = await getTenantBySlug('default');
+    if (defaultTenant) return defaultTenant.id;
+  }
+
+  throw new Error('租户上下文未初始化：无法解析租户');
 }
 
 /**
@@ -35,6 +42,7 @@ export async function getTenantSlug(): Promise<string> {
 
 /**
  * 从 Request 对象中提取租户 ID（用于 API 路由）
+ * middleware 对已认证的 admin/user 路由注入了 x-tenant-id
  */
 export function getTenantIdFromRequest(request: Request): string {
   const tenantId = request.headers.get('x-tenant-id');
@@ -49,8 +57,7 @@ export function getTenantIdFromRequest(request: Request): string {
  */
 export async function getTenantIdSafe(): Promise<string | null> {
   try {
-    const headerStore = await headers();
-    return headerStore.get('x-tenant-id');
+    return await getTenantId();
   } catch {
     return null;
   }

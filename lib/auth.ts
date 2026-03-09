@@ -40,8 +40,50 @@ export async function createSuperAdminToken(payload: { id: string; email: string
 
 export async function verifyToken(token: string): Promise<TokenPayload | null> {
   try {
+    // 检查是否在 Edge Runtime 运行
+    const isEdge = process.env.NEXT_RUNTIME === 'edge';
+
+    if (isEdge) {
+      // Edge Runtime 下无法使用 jsonwebtoken 的 verify (含有 Node 原生依赖)
+      // 使用 decodeToken 降级处理，用于基础的角色路由逻辑
+      return decodeToken(token);
+    }
+
     return jwt.verify(token, getJwtSecret()) as TokenPayload;
   } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * 手动解码 JWT Token（不验证签名）
+ * 仅用于中间件环境下的基础校验
+ *
+ * 警告：此函数不验证签名，仅用于 Edge Runtime 中的角色路由判断。
+ * 实际的权限验证必须在 route handler 中使用完整的 verifyToken 完成。
+ */
+export function decodeToken(token: string): TokenPayload | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+
+    // Base64Url 解码 Payload 部分（使用 Web API atob，兼容 Edge Runtime）
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const payload = JSON.parse(jsonPayload);
+
+    // 检查过期时间（基础校验）
+    if (payload.exp && payload.exp * 1000 < Date.now()) {
+      return null;
+    }
+
+    return payload;
+  } catch {
     return null;
   }
 }

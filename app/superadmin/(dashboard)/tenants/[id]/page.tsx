@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, RefreshCw, Trash2, RotateCcw, UserPlus } from 'lucide-react';
+import { ArrowLeft, Save, RefreshCw, Trash2, RotateCcw, UserPlus, Edit2, X } from 'lucide-react';
 import Link from 'next/link';
 
 interface TenantDetail {
@@ -33,6 +33,7 @@ interface TenantDetail {
   admins: {
     id: string;
     email: string;
+    disabled?: boolean;
     lastLogin: string | null;
     createdAt: string;
   }[];
@@ -66,6 +67,10 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
   const [showAddAdmin, setShowAddAdmin] = useState(false);
   const [adminForm, setAdminForm] = useState({ email: '', password: '' });
   const [creatingAdmin, setCreatingAdmin] = useState(false);
+
+  const [editingAdmin, setEditingAdmin] = useState<string | null>(null);
+  const [editAdminForm, setEditAdminForm] = useState({ email: '', password: '', disabled: false });
+  const [updatingAdmin, setUpdatingAdmin] = useState(false);
 
   useEffect(() => {
     params.then((p) => setTenantId(p.id));
@@ -177,12 +182,72 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
         setShowAddAdmin(false);
         fetchTenant();
       } else {
-        setMessage({ type: 'error', text: data.error || '创建失败' });
+        // Show specific field errors from Zod validation if available
+        const errorText = data.errors
+          ? data.errors.map((e: { field: string; message: string }) => e.message).join('；')
+          : data.error || '创建失败';
+        setMessage({ type: 'error', text: errorText });
       }
     } catch {
       setMessage({ type: 'error', text: '网络错误' });
     } finally {
       setCreatingAdmin(false);
+    }
+  };
+
+  const handleEditAdmin = (admin: { id: string; email: string; disabled?: boolean }) => {
+    setEditingAdmin(admin.id);
+    setEditAdminForm({ email: admin.email, password: '', disabled: admin.disabled || false });
+  };
+
+  const handleUpdateAdmin = async (adminId: string) => {
+    setUpdatingAdmin(true);
+    setMessage({ type: '', text: '' });
+    try {
+      const updateData: any = {};
+      if (editAdminForm.email) updateData.email = editAdminForm.email;
+      if (editAdminForm.password) updateData.password = editAdminForm.password;
+      updateData.disabled = editAdminForm.disabled;
+
+      const res = await fetch(`/api/superadmin/tenants/${tenantId}/admins/${adminId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage({ type: 'success', text: data.message || '管理员更新成功' });
+        setEditingAdmin(null);
+        fetchTenant();
+      } else {
+        const errorText = data.errors
+          ? data.errors.map((e: { field: string; message: string }) => e.message).join('；')
+          : data.error || '更新失败';
+        setMessage({ type: 'error', text: errorText });
+      }
+    } catch {
+      setMessage({ type: 'error', text: '网络错误' });
+    } finally {
+      setUpdatingAdmin(false);
+    }
+  };
+
+  const handleDeleteAdmin = async (adminId: string, email: string) => {
+    if (!confirm(`确定要删除管理员 ${email} 吗？`)) return;
+    setMessage({ type: '', text: '' });
+    try {
+      const res = await fetch(`/api/superadmin/tenants/${tenantId}/admins/${adminId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage({ type: 'success', text: data.message || '管理员删除成功' });
+        fetchTenant();
+      } else {
+        setMessage({ type: 'error', text: data.error || '删除失败' });
+      }
+    } catch {
+      setMessage({ type: 'error', text: '网络错误' });
     }
   };
 
@@ -506,14 +571,100 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
         )}
         <div className="divide-y divide-zinc-800">
           {tenant.admins.map((admin) => (
-            <div key={admin.id} className="flex items-center justify-between p-4">
-              <div>
-                <p className="text-sm font-medium text-white">{admin.email}</p>
-                <p className="text-xs text-zinc-500">创建于 {formatDate(admin.createdAt)}</p>
-              </div>
-              <div className="text-xs text-zinc-500">
-                {admin.lastLogin ? `最后登录 ${formatDate(admin.lastLogin)}` : '从未登录'}
-              </div>
+            <div key={admin.id}>
+              {editingAdmin === admin.id ? (
+                <div className="p-4 space-y-3 bg-zinc-800/30">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-400 mb-1">邮箱</label>
+                      <input
+                        type="email"
+                        value={editAdminForm.email}
+                        onChange={(e) =>
+                          setEditAdminForm({ ...editAdminForm, email: e.target.value })
+                        }
+                        className="w-full px-3 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-400 mb-1">
+                        新密码（留空不修改）
+                      </label>
+                      <input
+                        type="password"
+                        value={editAdminForm.password}
+                        onChange={(e) =>
+                          setEditAdminForm({ ...editAdminForm, password: e.target.value })
+                        }
+                        placeholder="至少8位，含大小写字母和数字"
+                        className="w-full px-3 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500/50"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-2 text-sm text-zinc-400 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editAdminForm.disabled}
+                        onChange={(e) =>
+                          setEditAdminForm({ ...editAdminForm, disabled: e.target.checked })
+                        }
+                        className="rounded border-zinc-700 bg-zinc-800"
+                      />
+                      禁用账号
+                    </label>
+                  </div>
+                  <div className="flex gap-3 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setEditingAdmin(null)}
+                      className="px-3 py-1.5 text-xs text-zinc-400 hover:text-white transition-colors"
+                    >
+                      取消
+                    </button>
+                    <button
+                      onClick={() => handleUpdateAdmin(admin.id)}
+                      disabled={updatingAdmin}
+                      className="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-lg text-xs transition-colors disabled:opacity-50"
+                    >
+                      {updatingAdmin ? '保存中...' : '保存修改'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between p-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-white">{admin.email}</p>
+                      {admin.disabled && (
+                        <span className="px-2 py-0.5 bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] rounded">
+                          已禁用
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-zinc-500">创建于 {formatDate(admin.createdAt)}</p>
+                    <p className="text-xs text-zinc-500">
+                      {admin.lastLogin ? `最后登录 ${formatDate(admin.lastLogin)}` : '从未登录'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleEditAdmin(admin)}
+                      className="p-2 text-zinc-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
+                      title="编辑"
+                    >
+                      <Edit2 size={14} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteAdmin(admin.id, admin.email)}
+                      className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                      title="删除"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
           {tenant.admins.length === 0 && (

@@ -37,8 +37,17 @@ export async function POST(req: Request) {
 
     const { email, password } = validationResult.data;
 
-    // 查询用户
-    const user = await db.users.getByEmail(email, tenantId);
+    // 先尝试在当前租户中查找用户
+    let user = await db.users.getByEmail(email, tenantId);
+
+    // 如果当前租户找不到，且不是默认租户，尝试跨租户查找（仅限 ADMIN 角色）
+    if (!user && tenantId) {
+      user = await db.users.getByEmailAcrossTenants(email, 'ADMIN');
+      // 如果找到了，更新 tenantId 为用户实际所属的租户
+      if (user) {
+        tenantId = user.tenantId;
+      }
+    }
 
     // 验证密码（使用统一错误消息防止用户枚举）
     const isPasswordValid = user ? await bcrypt.compare(password, user.password || '') : false;
@@ -52,12 +61,12 @@ export async function POST(req: Request) {
       return errorResponse('账号已被禁用，请联系管理员', 403);
     }
 
-    // 生成 JWT token（包含 tenantId）
+    // 生成 JWT token（包含用户实际所属的 tenantId）
     const token = await createToken({
       id: user.id,
       email: user.email,
       role: user.role,
-      tenantId,
+      tenantId: user.tenantId,
     });
 
     // 更新最后登录信息

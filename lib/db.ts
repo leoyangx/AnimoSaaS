@@ -279,6 +279,16 @@ export const db = {
         return null;
       }
     },
+    getByEmailAcrossTenants: async (email: string, role?: string) => {
+      try {
+        const where: Prisma.UserWhereInput = { email, deletedAt: null };
+        if (role) where.role = role;
+        return await prisma.user.findFirst({ where });
+      } catch (e) {
+        console.error('跨租户查询用户失败:', e);
+        return null;
+      }
+    },
     create: async (tenantId: string, data: { email: string; password: string; role?: string }) => {
       return await prisma.user.create({ data: { ...data, tenantId } });
     },

@@ -73,7 +73,7 @@ export default function TenantsPage() {
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      if (!data.success) {
+      if (!res.ok || !data.success) {
         setError(data.error || '创建失败');
         return;
       }
@@ -155,10 +155,10 @@ export default function TenantsPage() {
                     if (
                       !form.slug ||
                       form.slug ===
-                        form.name
-                          .toLowerCase()
-                          .replace(/\s+/g, '-')
-                          .replace(/[^a-z0-9-]/g, '')
+                      form.name
+                        .toLowerCase()
+                        .replace(/\s+/g, '-')
+                        .replace(/[^a-z0-9-]/g, '')
                     ) {
                       setForm((f) => ({
                         ...f,
@@ -183,7 +183,6 @@ export default function TenantsPage() {
                   value={form.slug}
                   onChange={(e) => setForm({ ...form, slug: e.target.value })}
                   required
-                  pattern="^[a-z0-9-]+$"
                   className="w-full px-3 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-white text-sm font-mono focus:outline-none focus:border-amber-500/50"
                   placeholder="my-org"
                 />
@@ -266,6 +265,7 @@ export default function TenantsPage() {
             <thead>
               <tr className="border-b border-zinc-800">
                 <th className="text-left text-xs font-medium text-zinc-500 p-4">租户</th>
+                <th className="text-left text-xs font-medium text-zinc-500 p-4">域名</th>
                 <th className="text-left text-xs font-medium text-zinc-500 p-4">套餐</th>
                 <th className="text-left text-xs font-medium text-zinc-500 p-4">用户</th>
                 <th className="text-left text-xs font-medium text-zinc-500 p-4">资产</th>
@@ -286,6 +286,13 @@ export default function TenantsPage() {
                         <p className="text-xs text-zinc-500 font-mono">{tenant.slug}</p>
                       </div>
                     </div>
+                  </td>
+                  <td className="p-4">
+                    {tenant.domain ? (
+                      <span className="text-xs text-blue-400 font-mono">{tenant.domain}</span>
+                    ) : (
+                      <span className="text-xs text-zinc-600">未设置</span>
+                    )}
                   </td>
                   <td className="p-4">
                     <span className="text-xs font-medium text-zinc-400 capitalize">
@@ -310,13 +317,12 @@ export default function TenantsPage() {
                   </td>
                   <td className="p-4">
                     <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        tenant.status === 'active'
-                          ? 'bg-green-500/10 text-green-500'
-                          : tenant.status === 'suspended'
-                            ? 'bg-yellow-500/10 text-yellow-500'
-                            : 'bg-red-500/10 text-red-500'
-                      }`}
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${tenant.status === 'active'
+                        ? 'bg-green-500/10 text-green-500'
+                        : tenant.status === 'suspended'
+                          ? 'bg-yellow-500/10 text-yellow-500'
+                          : 'bg-red-500/10 text-red-500'
+                        }`}
                     >
                       {tenant.status === 'active'
                         ? '活跃'
@@ -337,14 +343,14 @@ export default function TenantsPage() {
               ))}
               {filtered.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={6} className="p-10 text-center text-zinc-500 text-sm">
+                  <td colSpan={7} className="p-10 text-center text-zinc-500 text-sm">
                     {search ? '未找到匹配的租户' : '暂无租户'}
                   </td>
                 </tr>
               )}
               {loading && (
                 <tr>
-                  <td colSpan={6} className="p-10 text-center text-zinc-500 text-sm">
+                  <td colSpan={7} className="p-10 text-center text-zinc-500 text-sm">
                     加载中...
                   </td>
                 </tr>

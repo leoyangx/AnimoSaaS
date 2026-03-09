@@ -32,8 +32,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     // 获取管理员列表
     const admins = await prisma.user.findMany({
-      where: { tenantId: id, role: 'ADMIN' },
-      select: { id: true, email: true, lastLogin: true, createdAt: true },
+      where: { tenantId: id, role: 'ADMIN', deletedAt: null },
+      select: { id: true, email: true, disabled: true, lastLogin: true, createdAt: true },
     });
 
     // 最近活动
