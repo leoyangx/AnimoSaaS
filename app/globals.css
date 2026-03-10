@@ -1,0 +1,507 @@
+@import "tailwindcss";
+
+:root {
+  --bg-dark: #09090b;
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --brand-primary: #00ff88;
+
+  /* Dark theme colors - 提高对比度 */
+  --bg-primary: #09090b;
+  --bg-secondary: #18181b;
+  --bg-tertiary: #27272a;
+  --text-primary: rgba(255, 255, 255, 0.98);
+  --text-secondary: rgba(255, 255, 255, 0.75);
+  --text-tertiary: rgba(255, 255, 255, 0.55);
+  --border-primary: rgba(255, 255, 255, 0.12);
+  --border-secondary: rgba(255, 255, 255, 0.06);
+  --input-bg: #27272a;
+  --input-border: rgba(255, 255, 255, 0.12);
+  --input-focus: rgba(0, 255, 136, 0.3);
+}
+
+/* Light theme colors - 提高对比度 */
+[data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f4f4f5;
+  --bg-tertiary: #e4e4e7;
+  --text-primary: rgba(0, 0, 0, 0.95);
+  --text-secondary: rgba(0, 0, 0, 0.7);
+  --text-tertiary: rgba(0, 0, 0, 0.5);
+  --border-primary: rgba(0, 0, 0, 0.12);
+  --border-secondary: rgba(0, 0, 0, 0.06);
+  --input-bg: #ffffff;
+  --input-border: rgba(0, 0, 0, 0.18);
+  --input-focus: rgba(0, 255, 136, 0.4);
+  --glass-bg: rgba(0, 0, 0, 0.03);
+  --glass-border: rgba(0, 0, 0, 0.1);
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+}
+
+.glass-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--border-secondary);
+  border-radius: 24px;
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(var(--brand-primary-rgb, 0, 255, 136), 0.2);
+}
+
+[data-theme="light"] .glass-card {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+[data-theme="light"] .glass-card:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* Unified Input Styles - Dark Gray Premium */
+.glass-input,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="url"],
+textarea,
+select {
+  background-color: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  color: var(--text-primary);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.5;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+/* 有 Icon 的输入框需额外 padding-left，通过工具类覆盖 */
+.glass-input.pl-10 { padding-left: 2.5rem; }
+.glass-input.pl-11 { padding-left: 2.75rem; }
+.glass-input.pl-12 { padding-left: 3rem; }
+
+/* 通配输入框也支持 pl-* 覆盖 */
+input[type="text"].pl-10,
+input[type="email"].pl-10,
+input[type="password"].pl-10,
+input[type="search"].pl-10 { padding-left: 2.5rem; }
+
+input[type="text"].pl-11,
+input[type="email"].pl-11,
+input[type="password"].pl-11,
+input[type="search"].pl-11 { padding-left: 2.75rem; }
+
+input[type="text"].pl-12,
+input[type="email"].pl-12,
+input[type="password"].pl-12,
+input[type="search"].pl-12 { padding-left: 3rem; }
+
+.glass-input:focus,
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+input[type="url"]:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--input-focus);
+  background-color: var(--input-bg);
+  box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.1);
+}
+
+.glass-input::placeholder,
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+/* Select dropdown — all properties in one block to prevent background shorthand conflicts */
+select {
+  appearance: none;
+  /* background-image must coexist with background-color set above; never use background shorthand */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a1a1aa' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 2.5rem;
+  color-scheme: dark;
+}
+
+[data-theme="light"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2352525b' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  color-scheme: light;
+}
+
+/* OS-native <option> elements — hardcoded colors required, CSS vars not honored by OS */
+select option {
+  background-color: #27272a;
+  color: #ffffff;
+}
+
+[data-theme="light"] select option {
+  background-color: #ffffff;
+  color: #09090b;
+}
+
+/* Button styles */
+.cyber-button {
+  background: var(--brand-primary);
+  color: #000;
+  font-weight: 700;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9375rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cyber-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 255, 136, 0.3);
+}
+
+.cyber-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+
+.cyber-bg {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--brand-primary) 5%, transparent) 0%, transparent 40%),
+    radial-gradient(circle at 80% 80%, color-mix(in srgb, var(--brand-primary) 5%, transparent) 0%, transparent 40%);
+  z-index: -1;
+  transition: opacity 0.3s ease;
+}
+
+[data-theme="light"] .cyber-bg {
+  opacity: 0.3;
+}
+
+/* Brand button with guaranteed contrast */
+.brand-button {
+  background: var(--brand-primary);
+  color: #000;
+  position: relative;
+}
+
+.brand-button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(rgba(255,255,255,0.1), transparent);
+  pointer-events: none;
+}
+
+/* Text color utilities */
+.text-text-primary {
+  color: var(--text-primary);
+}
+
+.text-text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-text-tertiary {
+  color: var(--text-tertiary);
+}
+
+/* Background utilities */
+.bg-bg-dark {
+  background-color: var(--bg-primary);
+}
+
+.bg-bg-secondary {
+  background-color: var(--bg-secondary);
+}
+
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 136, 0.3);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 136, 0.5);
+}
+
+/* Mobile sidebar animation */
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.2s ease-out;
+}
+
+/* Responsive table wrapper */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive::-webkit-scrollbar {
+  height: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+[data-theme="light"] .table-responsive::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+/* Light theme text color overrides for hardcoded colors */
+[data-theme="light"] .text-white,
+[data-theme="light"] .text-white\/90,
+[data-theme="light"] .text-white\/80,
+[data-theme="light"] .text-white\/70 {
+  color: rgba(0, 0, 0, 0.9) !important;
+}
+
+[data-theme="light"] .text-zinc-400,
+[data-theme="light"] .text-zinc-500,
+[data-theme="light"] .text-zinc-600 {
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-theme="light"] .text-zinc-300 {
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+
+[data-theme="light"] .text-zinc-200 {
+  color: rgba(0, 0, 0, 0.8) !important;
+}
+
+[data-theme="light"] .text-zinc-700,
+[data-theme="light"] .text-zinc-800 {
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Light theme background overrides */
+[data-theme="light"] .bg-zinc-900,
+[data-theme="light"] .bg-zinc-950,
+[data-theme="light"] .bg-black {
+  background-color: #ffffff !important;
+}
+
+[data-theme="light"] .bg-zinc-800 {
+  background-color: #f4f4f5 !important;
+}
+
+[data-theme="light"] .bg-zinc-700 {
+  background-color: #e4e4e7 !important;
+}
+
+/* Light theme border overrides */
+[data-theme="light"] .border-white\/5,
+[data-theme="light"] .border-white\/10 {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] .border-zinc-800,
+[data-theme="light"] .border-zinc-700 {
+  border-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Light theme hover states */
+[data-theme="light"] .hover\:bg-white\/5:hover,
+[data-theme="light"] .hover\:bg-white\/10:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="light"] .hover\:text-white:hover {
+  color: rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Light theme for glass effects */
+[data-theme="light"] .bg-white\/5 {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+
+[data-theme="light"] .bg-white\/10 {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Light theme for backdrop blur panels */
+[data-theme="light"] .backdrop-blur-xl,
+[data-theme="light"] .backdrop-blur-2xl {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* 字体大小优化 - 提高可读性 */
+.text-xs {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.text-sm {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.text-base {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.text-lg {
+  font-size: 1.125rem;
+  line-height: 1.6;
+}
+
+/* 表格文字大小优化 */
+table {
+  font-size: 0.9375rem;
+}
+
+table th {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+table td {
+  font-size: 0.9375rem;
+}
+
+/* 标签和小文本优化 */
+label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+/* 提高小字体的对比度 */
+.text-zinc-500 {
+  color: rgba(var(--text-secondary-rgb, 161, 161, 170), 0.85);
+}
+
+[data-theme="light"] .text-zinc-500 {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.text-zinc-400 {
+  color: rgba(var(--text-secondary-rgb, 161, 161, 170), 0.75);
+}
+
+[data-theme="light"] .text-zinc-400 {
+  color: rgba(0, 0, 0, 0.55);
+}
+
+/* 卡片标题优化 */
+.glass-card h3,
+.glass-card h2 {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* 按钮文字大小统一 */
+button {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+button.text-xs {
+  font-size: 0.8125rem;
+}
+
+button.text-sm {
+  font-size: 0.875rem;
+}
+
+/* ─── 浅色模式：表格行、卡片内背景修复 ─── */
+[data-theme="light"] .bg-white\/\[0\.02\],
+[data-theme="light"] .bg-white\/\[0\.03\],
+[data-theme="light"] .bg-white\/\[0\.01\] {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+[data-theme="light"] table thead tr,
+[data-theme="light"] .bg-white\/5 + * {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+
+/* 表格 th 浅色模式文字 */
+[data-theme="light"] table th,
+[data-theme="light"] table td {
+  color: rgba(0, 0, 0, 0.85) !important;
+}
+
+/* 素材管理、分类管理 — category row 浅色背景 */
+[data-theme="light"] .divide-white\/5 > * {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ─── 跑马灯无缝滚动动画 ─── */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee linear infinite;
+  will-change: transform;
+}
+
+.marquee-wrapper {
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%);
+}

@@ -1,0 +1,96 @@
+services:
+  # PostgreSQL 数据库
+  db:
+    image: postgres:15-alpine
+    container_name: animosaas-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: animosaas
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-animosaas_pass}
+      POSTGRES_DB: animosaas_db
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+      TZ: Asia/Shanghai
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U animosaas -d animosaas_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - animosaas-network
+
+  # Next.js 应用
+  # 默认使用预构建镜像；本地构建请使用: docker compose -f docker-compose.yml -f docker-compose.build.yml build
+  app:
+    image: ghcr.io/leoyangx/animosaas:latest
+    container_name: animosaas-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # 数据库连接
+      DATABASE_URL: postgresql://animosaas:${DB_PASSWORD:-animosaas_pass}@db:5432/animosaas_db
+
+      # JWT 密钥（必须修改）
+      JWT_SECRET: ${JWT_SECRET}
+
+      # 多租户配置
+      DEFAULT_TENANT_NAME: ${DEFAULT_TENANT_NAME:-Default}
+      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-superadmin@animosaas.com}
+      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-SuperAdmin123!}
+      TENANT_MODE: ${TENANT_MODE:-path}
+
+      # Node 环境
+      NODE_ENV: production
+
+      # Cookie 安全（生产环境设为 false 使用 HTTPS）
+      DISABLE_SECURE_COOKIE: ${DISABLE_SECURE_COOKIE:-false}
+
+      # 应用配置
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+
+      # 时区
+      TZ: Asia/Shanghai
+
+      # 日志级别
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+
+      # Prisma
+      PRISMA_QUERY_ENGINE_LIBRARY: /app/node_modules/.prisma/client/libquery_engine-debian-openssl-3.0.x.so.node
+    volumes:
+      - ./public/uploads:/app/public/uploads
+      - ./logs:/app/logs
+      - app_data:/app/.next/cache
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - animosaas-network
+
+volumes:
+  postgres_data:
+    driver: local
+  app_data:
+    driver: local
+
+networks:
+  animosaas-network:
+    driver: bridge
